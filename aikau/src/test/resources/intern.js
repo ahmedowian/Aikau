@@ -34,7 +34,8 @@ define(["./config/Suites"],
       }],
 
       // Maximum number of simultaneous integration tests that should be executed on the remote WebDriver service
-      maxConcurrency: 1,
+      // maxConcurrency: 1,
+      maxConcurrency: Infinity,
 
       // Dig Dug tunnel handler
       tunnel: "NullTunnel",
@@ -53,7 +54,8 @@ define(["./config/Suites"],
          packages: [
             { name: "alfresco", location: "./src/test/resources/alfresco" },
             { name: "config", location: "./src/test/resources/config/vm" },
-            { name: "reporters", location: "./src/test/resources/reporters" }
+            { name: "reporters", location: "./src/test/resources/reporters" },
+            { name: "dojo", location: "./node_modules/intern/node_modules/dojo" }
          ]
       },
 
@@ -71,7 +73,8 @@ define(["./config/Suites"],
          // "Console"
          // "Runner"
          // "reporters/TestSummary"
-         "reporters/AikauReporter"
+         // "reporters/AikauReporter"
+         "reporters/AikauConcurrentReporter"
          // "Pretty"
       ]
 
