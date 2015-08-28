@@ -29,16 +29,18 @@
 define(["dojo/_base/declare",
         "alfresco/services/BaseService",
         "alfresco/core/CoreXhr",
+        "alfresco/services/_PreferenceServiceTopicMixin",
         "dojo/json",
         "dojo/_base/lang",
         "dojo/_base/array",
         "dojo/on",
         "alfresco/dialogs/AlfDialog",
         "alfresco/buttons/AlfButton",
-        "service/constants/Default"], 
-        function(declare, BaseService, CoreXhr, dojoJson, lang, array, on, AlfDialog, AlfButton, AlfConstants) {
+        "service/constants/Default",
+        "alfresco/core/ObjectTypeUtils"], 
+        function(declare, BaseService, CoreXhr, _PreferenceServiceTopicMixin, dojoJson, lang, array, on, AlfDialog, AlfButton, AlfConstants, ObjectTypeUtils) {
    
-   return declare([BaseService, CoreXhr], {
+   return declare([BaseService, CoreXhr, _PreferenceServiceTopicMixin], {
 
       /**
        * An array of the i18n files to use with this widget.
@@ -163,6 +165,13 @@ define(["dojo/_base/declare",
          this.aggregateUploadCurrentSize = 0;
       },
 
+      setLastUploadDestinations: function alfresco_services_UploadService__setLastUploadDestinations(value) {
+         if (value)
+         {
+            this.uploadDestinationHistory = value.split(",");
+         }
+      },
+
       /**
        * @instance
        * @since 1.0.32
@@ -170,6 +179,14 @@ define(["dojo/_base/declare",
       registerSubscriptions: function alfresco_services_UploadService__registerSubscriptions() {
          this.reset();
          this.alfSubscribe(this._ALF_UPLOAD_TOPIC, lang.hitch(this, this.onUploadRequest));
+
+         this.uploadDestinationHistory = [];
+         this.alfPublish(this.getPreferenceTopic, {
+            preference: "org.alfresco.share.upload.destination.history",
+            callback: this.setLastUploadDestinations,
+            callbackScope: this
+         });
+         
 
          // Set up template?
          if (this.progressDialog === null || this.progressDialog === undefined)
@@ -398,6 +415,32 @@ define(["dojo/_base/declare",
        * @param {object} targetData
        */
       constructUploadData: function alfresco_services_UploadService__constructUploadData(file, fileName, targetData) {
+         // NOTE: This is a hack, to work around the fact that pickers always return an array, even in
+         //       single item mode - that needs to be resolved
+         var destination = ObjectTypeUtils.isArray(targetData.destination) ? targetData.destination[0] : targetData.destination;
+
+         // NOTE: Prototype code, needs improving...
+         var alreadyInHistory = array.some(this.uploadDestinationHistory, function(d) {
+            return d === destination;
+         });
+         if (alreadyInHistory)
+         {
+            // No action
+         }
+         else
+         {
+            if (this.uploadDestinationHistory.length > 2)
+            {
+               this.uploadDestinationHistory.pop();
+            }
+            this.uploadDestinationHistory.unshift(destination);
+         }
+
+         this.alfPublish(this.setPreferenceTopic, {
+            preference: "org.alfresco.share.upload.destination.history",
+            value: this.uploadDestinationHistory.join(",")
+         });
+
          // TODO: NEED TO UPDATE THIS OBJECT AND INCLUDE DEFAULTS, ETC AS INSTANCE VARIABLES...
          // The object should take the values passed in the upload request rather than having statically
          // defined data created when the widget is instantiated (e.g. this should be able to respond to
@@ -406,7 +449,7 @@ define(["dojo/_base/declare",
          {
             filedata: file,
             filename: fileName,
-            destination: targetData.destination,
+            destination: destination,
             siteId: targetData.siteId,
             containerId: targetData.containerId,
             uploaddirectory: targetData.uploadDirectory,

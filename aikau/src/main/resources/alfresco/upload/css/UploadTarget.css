@@ -1,0 +1,33 @@
+.alfresco-upload-UploadTarget {
+
+   background-color: #DFE9DE;
+
+   .alfresco-upload-UploadTarget__dropZone {
+      width: 40%;
+      display: inline-block;
+      vertical-align: top;
+      border: 3px dashed #6BA969;
+      height: 200px;
+      margin: 5px;
+
+      .alfresco-upload-UploadTarget__title {
+         text-align: center;
+         line-height: 200px;
+      }
+   }
+
+   .alfresco-upload-UploadTarget__history {
+      width: 40%;
+      display: inline-block;
+      vertical-align: top;
+
+      .alfresco-documentlibrary-AlfDocument {
+         margin: 5px;
+         border: solid 3px #6BA969;
+         border-radius: 8px;
+         padding: 5px;
+      }
+   }
+
+
+}

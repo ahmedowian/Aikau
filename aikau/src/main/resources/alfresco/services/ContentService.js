@@ -420,6 +420,40 @@ define(["dojo/_base/declare",
          });
       },
 
+
+      showUploadLocationPicker: function alfresco_services_ContentService__showUploadLocationPicker(payload) {
+         this.alfPublish("ALF_CREATE_FORM_DIALOG_REQUEST", {
+            dialogTitle: "File Upload",
+            dialogConfirmationButtonTitle: "Upload",
+            dialogCancellationButtonTitle: "Cancel",
+            formSubmissionTopic: "ALF_CONTENT_SERVICE_UPLOAD_REQUEST_RECEIVED",
+            formSubmissionPayloadMixin: {
+               targetData: {
+                  destination: parentNodeRef,
+                  siteId: null,
+                  containerId: null,
+                  uploadDirectory: null,
+                  updateNodeRef: updateNodeRef,
+                  description: "",
+                  overwrite: false,
+                  thumbnails: "doclib",
+                  username: null
+               }
+            },
+            responseScope: payload.alfResponseScope,
+            widgets: [
+               {
+                  name: "alfresco/forms/controls/ContainerPicker",
+                  config: {
+                     id: "FOLDER_PICKER",
+                     label: "Upload to:",
+                     description: "Select a folder to upload the file(s) to"
+                  }
+               }
+            ]
+         });
+      },
+
       /**
        * This function will be called whenever the [AlfFormDialog]{@link module:alfresco/forms/AlfFormDialog} created
        * by the [showUploader function]{@link module:alfresco/services/ContentService#showUploader} is confirmed to

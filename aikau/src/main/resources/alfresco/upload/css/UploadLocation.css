@@ -1,0 +1,10 @@
+.alfresco-upload-UploadLocation {
+
+   background-color: #DFE9DE;
+   border: 3px solid #6BA969;
+
+   &.dndHighlight {
+      border: 3px solid orange;
+   }
+
+}
