@@ -592,17 +592,41 @@ define([
 
          // Log the failures
          console.log(ANSI_COLORS.Bright + "FAILURES" + ANSI_COLORS.Reset);
-         // var environments = Object.keys(this.environments).map(function(envName) {
-         //    var environment = {
-         //       name: envName,
-         //       failingSuites: []
-         //    };
-         //    Object.keys(this.failures).forEach(function(suiteName) {
-         //       var testFailures = this.failures[suiteName],
+         Object.keys(this.environments).forEach(function(envName) {
 
-         //    }, this);
-         //    return environment;
-         // }, this);
+            // Log the environment name
+            console.log(ANSI_COLORS.Bright + "\"" + envName + "\"" + ANSI_COLORS.Reset);
+
+            // Build up suite/test/error object
+            var failingSuites = {};
+            Object.keys(this.failures).forEach(function(suiteName) {
+               var testFailures = this.failures[suiteName];
+               Object.keys(testFailures).forEach(function(testName) {
+                  var failingEnvs = testFailures[testName],
+                     errorMessage = failingEnvs[envName];
+                  if (errorMessage) {
+                     var failingTests = failingSuites[suiteName] || {};
+                     failingTests[testName] = errorMessage;
+                     failingSuites[suiteName] = failingTests;
+                  }
+               });
+            }, this);
+
+            // Output the suites/tests/errors
+            Object.keys(failingSuites).forEach(function(suiteName) {
+               console.log("");
+               console.log("  " + suiteName);
+               var failingTests = failingSuites[suiteName];
+               Object.keys(failingTests).forEach(function(testName) {
+                  console.log("    - " + testName);
+                  console.log("      " + ANSI_COLORS.FgRed + failingTests[testName] + ANSI_COLORS.Reset);
+               });
+            });
+
+            // Line-break between environments
+            console.log("");
+
+         }, this);
       },
 
       /**
@@ -714,7 +738,7 @@ define([
                      environments = Object.keys(testFailures).join(", ");
                   charm.position(CHARM.Col.MessageTitle + CHARM.ProblemIndent, messagesRow++);
                   charm.write("- " + testName);
-                  charm.display("dim");
+                  charm.display("bright");
                   charm.write(" [" + environments + "]");
                   charm.display("reset");
                });
