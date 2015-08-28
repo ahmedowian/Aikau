@@ -34,7 +34,7 @@ define([
     * @type {Object}
     * @see  https://coderwall.com/p/yphywg/printing-colorful-text-in-terminal-when-run-node-js-script
     */
-   var ANSI_COLORS = {
+   var ANSI_CODES = {
       Reset: "\x1b[0m",
       Bright: "\x1b[1m",
       Dim: "\x1b[2m",
@@ -69,12 +69,13 @@ define([
    var CHARM = {
       Col: {
          Default: 3,
+         MessageString: 3,
+         MessageTitle: 3,
          ProgressName: 3,
          ProgressValue: 21,
+         SeparatorLine: 3,
          StatusName: 60,
-         StatusValue: 74,
-         MessageTitle: 3,
-         MessageString: 3
+         StatusValue: 74
       },
       Row: {
          Title: 3,
@@ -88,14 +89,23 @@ define([
          Warnings: 13,
          Deprecations: 14,
          ProgressTitle: 6,
-         PercentComplete: 7,
-         TimeRemaining: 8,
-         ProgressBar: 11,
-         MessagesLine: 16
+         PercentComplete: 12,
+         TimeRemaining: 13,
+         ProgressBar: 9,
+         SeparatorLine: 16,
+         MessagesLine: 18
       },
-      ProgressBarLength: 50,
-      ProgressCompleteChar: "#",
-      ProblemIndent: 2
+      ProblemIndent: 2,
+      ProgressBar: {
+         CompleteChar: "=",
+         EmptyChar: ".",
+         Length: 50,
+         LineChar: "-"
+      },
+      Separator: {
+         Char: "-",
+         Length: 150
+      }
    };
 
    /**
@@ -107,7 +117,7 @@ define([
    var CONFIG = {
       BreakOnError: true,
       Title: "AIKAU UNIT TESTS",
-      TitleHelp: "(Ctrl-C to exit)",
+      TitleHelp: "(Ctrl-C to abort)",
       TitleIndent: 1
    };
 
@@ -263,6 +273,15 @@ define([
       },
 
       /**
+       * Information about the terminal window
+       *
+       * @type {Object}
+       * @property {int} cols Number of columns available
+       * @property {int} rows Number of rows available
+       */
+      terminalInfo: null,
+
+      /**
        * Running totals of test states
        *
        * @instance
@@ -326,6 +345,16 @@ define([
       },
 
       /**
+       * Debug-only function that will take a message and immediately break and log it to console
+       *
+       * @instance
+       * @param {string} message The message
+       */
+      abortAndLog: function(message) {
+         this.exitWithError(new Error(message));
+      },
+
+      /**
        * Capitalise the supplied string
        *
        * @instance
@@ -344,8 +373,10 @@ define([
        * @param {string} [message] An optional extra message string
        */
       exitWithError: function(err, message) {
-         this.resetCursor();
-         charm.destroy();
+         if (charm) {
+            this.resetCursor();
+            charm.destroy();
+         }
          console.error("");
          message && console.error(message);
          console.error(err.stack || err);
@@ -379,6 +410,12 @@ define([
          charm.pipe(process.stdout);
          charm.reset();
 
+         // Obtain terminal info
+         var that = this;
+         setTimeout(function() {
+            that.logProblem(PROBLEM_TYPE.Warning, "General", "terminalInfo = " + JSON.stringify(that.terminalInfo));
+         }, 0);
+
          // Always cast to string when using charm.write()
          var originalWriteMethod = charm.write;
          charm.write = function(str) {
@@ -406,7 +443,7 @@ define([
          }
          charm.display("reset");
 
-         // Create the status window
+         // Create the status section
          charm.position(CHARM.Col.StatusName, CHARM.Row.StatusTitle);
          charm.display("bright");
          charm.write("STATUS");
@@ -428,7 +465,7 @@ define([
          charm.position(CHARM.Col.StatusName, CHARM.Row.Deprecations);
          charm.write("Deprecations: ");
 
-         // Create the progress window
+         // Create the progress section
          charm.position(CHARM.Col.ProgressName, CHARM.Row.ProgressTitle);
          charm.display("bright");
          charm.write("PROGRESS");
@@ -440,16 +477,26 @@ define([
 
          // Draw progress bar
          charm.position(CHARM.Col.ProgressName, CHARM.Row.ProgressBar - 1);
-         for (i = 0; i < CHARM.ProgressBarLength; i++) {
-            charm.write("=");
+         for (i = 0; i < CHARM.ProgressBar.Length; i++) {
+            charm.display("bright");
+            charm.write(CHARM.ProgressBar.LineChar);
+            charm.display("reset");
          }
          charm.position(CHARM.Col.ProgressName, CHARM.Row.ProgressBar);
-         for (i = 0; i < CHARM.ProgressBarLength; i++) {
-            charm.write("-");
+         for (i = 0; i < CHARM.ProgressBar.Length; i++) {
+            charm.write(CHARM.ProgressBar.EmptyChar);
          }
          charm.position(CHARM.Col.ProgressName, CHARM.Row.ProgressBar + 1);
-         for (i = 0; i < CHARM.ProgressBarLength; i++) {
-            charm.write("=");
+         for (i = 0; i < CHARM.ProgressBar.Length; i++) {
+            charm.display("bright");
+            charm.write(CHARM.ProgressBar.LineChar);
+            charm.display("reset");
+         }
+
+         // Draw separator
+         charm.position(CHARM.Col.SeparatorLine, CHARM.Row.SeparatorLine);
+         for (i = 0; i < CHARM.Separator.Length; i++) {
+            charm.write(CHARM.Separator.Char);
          }
       },
 
@@ -494,7 +541,7 @@ define([
             this.incrementCounter("failed");
 
          } catch (e) {
-            this.exitWithError(e, "Error while handling failed test");
+            this.exitWithError(e, "Error handling failed test");
          }
       },
 
@@ -539,7 +586,7 @@ define([
                this.requestRedraw();
 
             } catch (e) {
-               this.exitWithError(e, "Error while logging problem");
+               this.exitWithError(e, "Error logging problem");
             }
          }
       },
@@ -567,7 +614,7 @@ define([
                timeInMinsAndSecs = wholeMins + " " + minText;
             }
          } else {
-            roundedSecs = Math.round(ms / 100) / 10;
+            roundedSecs = Math.ceil(ms / 1000);
             secText = roundedSecs === 1 ? "second" : "seconds";
             timeInMinsAndSecs = roundedSecs + " " + secText;
          }
@@ -581,21 +628,21 @@ define([
        */
       outputFinalResults: function() {
 
-         // Firstly, stop using charm ... it's all console logging from now on
+         // Do one final redraw to make sure the display's up to date
+         this.redraw();
+
+         // Next, stop using charm ... it's all console logging from now on
          charm.destroy();
 
          // Output separator
-         console.log(ANSI_COLORS.Bright);
+         console.log(ANSI_CODES.Bright);
          console.log("============================== FULL DETAILS ==============================");
          console.log("");
-         console.log(ANSI_COLORS.Reset);
+         console.log(ANSI_CODES.Reset);
 
          // Log the failures
-         console.log(ANSI_COLORS.Bright + "FAILURES" + ANSI_COLORS.Reset);
+         var loggedSectionTitle = false;
          Object.keys(this.environments).forEach(function(envName) {
-
-            // Log the environment name
-            console.log(ANSI_COLORS.Bright + "\"" + envName + "\"" + ANSI_COLORS.Reset);
 
             // Build up suite/test/error object
             var failingSuites = {};
@@ -612,19 +659,32 @@ define([
                });
             }, this);
 
-            // Output the suites/tests/errors
-            Object.keys(failingSuites).forEach(function(suiteName) {
-               console.log("");
-               console.log("  " + suiteName);
-               var failingTests = failingSuites[suiteName];
-               Object.keys(failingTests).forEach(function(testName) {
-                  console.log("    - " + testName);
-                  console.log("      " + ANSI_COLORS.FgRed + failingTests[testName] + ANSI_COLORS.Reset);
-               });
-            });
+            // Check if there are failures to display
+            var failingSuiteNames = Object.keys(failingSuites);
+            if (failingSuiteNames.length) {
 
-            // Line-break between environments
-            console.log("");
+               // Output the section title
+               if (!loggedSectionTitle) {
+                  console.log(ANSI_CODES.Bright + "FAILURES" + ANSI_CODES.Reset);
+                  loggedSectionTitle = true;
+               }
+
+               // Log the environment name
+               console.log("");
+               console.log(ANSI_CODES.Bright + "[" + envName + "]" + ANSI_CODES.Reset);
+               console.log("");
+
+               // Output the suites/tests/errors
+               Object.keys(failingSuites).forEach(function(suiteName) {
+                  console.log(ANSI_CODES.Bright + ANSI_CODES.FgRed + "\"" + suiteName + "\"" + ANSI_CODES.Reset);
+                  var failingTests = failingSuites[suiteName];
+                  Object.keys(failingTests).forEach(function(testName) {
+                     var errorMessage = failingTests[testName];
+                     console.log(ANSI_CODES.Bright + testName + ANSI_CODES.Reset);
+                     console.log(errorMessage);
+                  });
+               });
+            }
 
          }, this);
       },
@@ -690,7 +750,7 @@ define([
             var ratioComplete = this.testCounts.run / this.testCounts.total,
                percentComplete = Math.floor(ratioComplete * 100) + "%",
                timeTaken = Date.now() - this.startTime,
-               timeLeftMs = (1 - ratioComplete) * timeTaken,
+               timeLeftMs = timeTaken * ((1 / ratioComplete) - 1),
                timeLeftMins = this.msToHumanReadable(timeLeftMs),
                timeLeftMessage = this.pad(timeLeftMins, CHARM.Col.StatusName - CHARM.Col.ProgressValue, " ", true);
             charm.position(CHARM.Col.ProgressValue, CHARM.Row.PercentComplete);
@@ -703,10 +763,10 @@ define([
             }
 
             // Update the progress bar
-            var progressBarPartsComplete = Math.floor(ratioComplete * CHARM.ProgressBarLength);
+            var progressBarPartsComplete = Math.floor(ratioComplete * CHARM.ProgressBar.Length);
             charm.position(CHARM.Col.ProgressName, CHARM.Row.ProgressBar);
             for (var i = 0; i < progressBarPartsComplete; i++) {
-               charm.write(CHARM.ProgressCompleteChar);
+               charm.write(CHARM.ProgressBar.CompleteChar);
             }
             this.state.charm.progressBarCurrPos = CHARM.Col.ProgressName + progressBarPartsComplete;
 
@@ -751,9 +811,9 @@ define([
             Object.keys(this.problems).forEach(function(problemType) {
 
                // Get the problem collection and construct artificially if empty
-               var problemCollection = this.problems[problemType];
-               if (!Object.keys(problemCollection).length) {
-                  problemCollection = {
+               var problems = this.problems[problemType];
+               if (!Object.keys(problems).length) {
+                  problems = {
                      "N/A": {}
                   };
                }
@@ -765,13 +825,22 @@ define([
                charm.display("reset");
 
                // Output the groups and their counts
-               Object.keys(problemCollection).forEach(function(groupName) {
+               Object.keys(problems).forEach(function(groupName) {
+
+                  // Output the group name
                   charm.position(CHARM.Col.MessageTitle, messagesRow++);
                   charm.write(groupName);
-                  var problem = problemCollection[groupName];
-                  if (problem.count) {
-                     charm.write(" (x" + problem.count + ")");
-                  }
+
+                  // Show the messages for this group
+                  var messages = problems[groupName];
+                  Object.keys(messages).forEach(function(message) {
+                     var messageCount = messages[message].count;
+                     charm.position(CHARM.Col.MessageTitle + CHARM.ProblemIndent, messagesRow++);
+                     charm.write("- \"" + message + "\"");
+                     if (messageCount && messageCount > 1) {
+                        charm.write(" (x" + messageCount + ")");
+                     }
+                  });
                });
 
                // Blank line between problem types
@@ -786,7 +855,7 @@ define([
             this.resetCursor();
 
          } catch (e) {
-            this.exitWithError(e, "Error while running redraw()");
+            this.exitWithError(e, "Error running redraw()");
          }
       },
 
@@ -796,6 +865,9 @@ define([
        * @instance
        */
       requestRedraw: function() {
+         if (!charm) {
+            return;
+         }
          var timeSinceLastRedraw = Date.now() - this.redrawLastRun,
             runNow = timeSinceLastRedraw > this.redrawIntervalMs,
             that = this;
@@ -849,8 +921,8 @@ define([
          clearInterval(this.progressAnimInterval);
          charm.position(CHARM.Col.Default, CHARM.Row.ProgressBar);
          charm.display("bright");
-         for (var i = 0; i < CHARM.ProgressBarLength; i++) {
-            charm.write(CHARM.ProgressCompleteChar);
+         for (var i = 0; i < CHARM.ProgressBar.Length; i++) {
+            charm.write(CHARM.ProgressBar.CompleteChar);
          }
          charm.display("reset");
          charm.write(" ");
@@ -986,6 +1058,7 @@ define([
        * @param {Object} executor The test executor
        */
       runStart: function( /*jshint unused:false*/ executor) {
+         helper.terminalInfo = executor.config.terminalInfo;
          helper.startTime = Date.now();
          helper.initCharm();
          helper.requestRedraw();

@@ -75,6 +75,9 @@ module.exports = function(grunt) {
    // Update the grunt config
    grunt.config.merge({
       intern: {
+         options: {
+            rowsCols: process.stdout.rows + "|" + process.stdout.columns // Used by ConcurrentReporter
+         },
          dev: {
             options: {
                runType: "runner",
