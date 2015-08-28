@@ -28,8 +28,10 @@ define(["alfresco/TestCommon",
         "intern/dojo/node!leadfoot/keys"], 
         function(TestCommon, assert, registerSuite, keys) {
 
+registerSuite(function(){
    var browser;
-   registerSuite({
+
+   return {
       name: "Infinite Scrolling Dashlet Tests",
 
       setup: function() {
@@ -128,5 +130,6 @@ define(["alfresco/TestCommon",
       "Post Coverage Results": function() {
          TestCommon.alfPostCoverageResults(this, browser);
       }
+   };
    });
 });

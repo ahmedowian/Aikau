@@ -29,8 +29,10 @@ define(["intern!object",
         "alfresco/TestCommon"], 
         function (registerSuite, assert, intern, require, TestCommon) {
 
+registerSuite(function(){
    var browser;
-   registerSuite({
+
+   return {
       name: "Code Coverage Balancer",
 
       setup: function() {
@@ -61,5 +63,6 @@ define(["intern!object",
       "Post Coverage Results": function() {
          TestCommon.alfPostCoverageResults(this, browser);
       }
+   };
    });
 });

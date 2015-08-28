@@ -30,8 +30,10 @@ define(["intern!object",
         "intern/dojo/node!leadfoot/keys"], 
         function (registerSuite, expect, assert, require, TestCommon, keys) {
 
+registerSuite(function(){
    var browser;
-   registerSuite({
+
+   return {
       name: "Tab Container Tests",
 
       setup: function() {
@@ -163,11 +165,15 @@ define(["intern!object",
       "Post Coverage Results": function() {
          TestCommon.alfPostCoverageResults(this, browser);
       }
+   };
    });
 
 
    // This test reloads the page to clear any previous focus and make keyboard actions more predictable
-   registerSuite({
+registerSuite(function(){
+   var browser;
+
+   return {
       name: "Tab Container Tests (keyboard)",
 
       setup: function() {
@@ -249,11 +255,15 @@ define(["intern!object",
       "Post Coverage Results": function() {
          TestCommon.alfPostCoverageResults(this, browser);
       }
+   };
    });
 
 
    // This test reloads the page to clear any previous focus and make keyboard actions more predictable
-   registerSuite({
+registerSuite(function(){
+   var browser;
+
+   return {
       name: "Tab Container Tests (function)",
 
       setup: function() {
@@ -571,9 +581,13 @@ define(["intern!object",
       "Post Coverage Results": function() {
          TestCommon.alfPostCoverageResults(this, browser);
       }
+   };
    });
 
-   registerSuite({
+registerSuite(function(){
+   var browser;
+
+   return {
       name: "Tab Container Tests (example use case)",
 
       setup: function() {
@@ -631,9 +645,13 @@ define(["intern!object",
       "Post Coverage Results": function() {
          TestCommon.alfPostCoverageResults(this, browser);
       }
+   };
    });
 
-   registerSuite({
+registerSuite(function(){
+   var browser;
+
+   return {
       name: "Tab Container Tests (example use case 2)",
 
       setup: function() {
@@ -667,9 +685,13 @@ define(["intern!object",
       "Post Coverage Results": function() {
          TestCommon.alfPostCoverageResults(this, browser);
       }
+   };
    });
 
-   registerSuite({
+registerSuite(function(){
+   var browser;
+
+   return {
       name: "Tab Container Tests (height calculations)",
 
       setup: function() {
@@ -714,5 +736,6 @@ define(["intern!object",
       "Post Coverage Results": function() {
          TestCommon.alfPostCoverageResults(this, browser);
       }
+   };
    });
 });

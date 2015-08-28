@@ -28,8 +28,10 @@ define(["alfresco/TestCommon",
    ],
    function(TestCommon, assert, registerSuite) {
 
-      var browser;
-      registerSuite({
+registerSuite(function(){
+   var browser;
+
+   return {
          name: "Dashlet Tests",
 
          setup: function() {
@@ -118,5 +120,6 @@ define(["alfresco/TestCommon",
          "Post Coverage Results": function() {
             TestCommon.alfPostCoverageResults(this, browser);
          }
+      };
       });
    });
