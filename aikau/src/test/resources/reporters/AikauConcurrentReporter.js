@@ -67,13 +67,13 @@ define([
     * @type {Object}
     */
    var CHARM = {
+      BottomMargin: 2,
       Col: {
          Default: 3,
          MessageString: 3,
          MessageTitle: 3,
          ProgressName: 3,
          ProgressValue: 21,
-         SeparatorLine: 3,
          StatusName: 60,
          StatusValue: 74
       },
@@ -92,20 +92,18 @@ define([
          PercentComplete: 12,
          TimeRemaining: 13,
          ProgressBar: 9,
-         SeparatorLine: 16,
-         MessagesLine: 18
+         MessagesLine: 16
       },
       ProblemIndent: 2,
+      ProblemPrefix: "  - ",
+      ProblemsCroppedMessage: "[previous messages hidden ...]",
       ProgressBar: {
          CompleteChar: "=",
          EmptyChar: ".",
          Length: 50,
          LineChar: "-"
       },
-      Separator: {
-         Char: "-",
-         Length: 150
-      }
+      TitleIndent: 1
    };
 
    /**
@@ -117,8 +115,7 @@ define([
    var CONFIG = {
       BreakOnError: true,
       Title: "AIKAU UNIT TESTS",
-      TitleHelp: "(Ctrl-C to abort)",
-      TitleIndent: 1
+      TitleHelp: "(Ctrl-C to abort)"
    };
 
    /**
@@ -299,6 +296,14 @@ define([
       },
 
       /**
+       * How many rows are available for displaying messages
+       *
+       * @instance
+       * @type {number}
+       */
+      totalMessageRows: 0,
+
+      /**
        * The warnings container object
        *
        * @instance
@@ -410,11 +415,8 @@ define([
          charm.pipe(process.stdout);
          charm.reset();
 
-         // Obtain terminal info
-         var that = this;
-         setTimeout(function() {
-            that.logProblem(PROBLEM_TYPE.Warning, "General", "terminalInfo = " + JSON.stringify(that.terminalInfo));
-         }, 0);
+         // Calculate message space
+         this.totalMessageRows = this.terminalInfo.rows - CHARM.Row.MessagesLine - CHARM.BottomMargin;
 
          // Always cast to string when using charm.write()
          var originalWriteMethod = charm.write;
@@ -424,13 +426,13 @@ define([
 
          // Output the title
          var titleMessageParts = [CONFIG.Title, CONFIG.TitleHelp],
-            underOverLineLength = titleMessageParts.join(" ").length + (CONFIG.TitleIndent * 2);
+            underOverLineLength = titleMessageParts.join(" ").length + (CHARM.TitleIndent * 2);
          charm.position(CHARM.Col.Default, CHARM.Row.Title - 1);
          charm.display("bright");
          for (i = 0; i < underOverLineLength; i++) {
             charm.write("=");
          }
-         charm.position(CHARM.Col.Default + CONFIG.TitleIndent, CHARM.Row.Title);
+         charm.position(CHARM.Col.Default + CHARM.TitleIndent, CHARM.Row.Title);
          charm.write(CONFIG.Title);
          if (CONFIG.TitleHelp) {
             charm.display("reset");
@@ -491,12 +493,6 @@ define([
             charm.display("bright");
             charm.write(CHARM.ProgressBar.LineChar);
             charm.display("reset");
-         }
-
-         // Draw separator
-         charm.position(CHARM.Col.SeparatorLine, CHARM.Row.SeparatorLine);
-         for (i = 0; i < CHARM.Separator.Length; i++) {
-            charm.write(CHARM.Separator.Char);
          }
       },
 
@@ -634,7 +630,7 @@ define([
          // Next, stop using charm ... it's all console logging from now on
          charm.destroy();
 
-         // Output separator
+         // Output full-details title
          console.log(ANSI_CODES.Bright);
          console.log("============================== FULL DETAILS ==============================");
          console.log("");
@@ -665,17 +661,17 @@ define([
 
                // Output the section title
                if (!loggedSectionTitle) {
-                  console.log(ANSI_CODES.Bright + "FAILURES" + ANSI_CODES.Reset);
+                  console.log(ANSI_CODES.Bright + "=== FAILURES ===" + ANSI_CODES.Reset);
                   loggedSectionTitle = true;
                }
 
                // Log the environment name
                console.log("");
-               console.log(ANSI_CODES.Bright + "[" + envName + "]" + ANSI_CODES.Reset);
-               console.log("");
+               console.log(ANSI_CODES.Bright + "--- " + envName.toUpperCase() + " ---" + ANSI_CODES.Reset);
 
                // Output the suites/tests/errors
                Object.keys(failingSuites).forEach(function(suiteName) {
+                  console.log("");
                   console.log(ANSI_CODES.Bright + ANSI_CODES.FgRed + "\"" + suiteName + "\"" + ANSI_CODES.Reset);
                   var failingTests = failingSuites[suiteName];
                   Object.keys(failingTests).forEach(function(testName) {
@@ -770,19 +766,15 @@ define([
             }
             this.state.charm.progressBarCurrPos = CHARM.Col.ProgressName + progressBarPartsComplete;
 
-            // Remove previous messages
-            charm.position(0, messagesRow);
-            charm.erase("down");
+            // Prepare object to contain messages
+            var messages = {
+               deprecations: [],
+               errors: [],
+               failures: [],
+               warnings: []
+            };
 
-            // Output failures title
-            charm.position(CHARM.Col.MessageTitle, messagesRow);
-            charm.display("bright");
-            charm.write("FA"); // Broken apart to try and avoid Grunt adding two red chevrons
-            charm.position(CHARM.Col.MessageTitle + 2, messagesRow++);
-            charm.write("ILURES");
-            charm.display("reset");
-
-            // Output failures
+            // Generate failure messages
             var failures = this.failures;
             if (!Object.keys(failures).length) {
                failures = {
@@ -790,24 +782,18 @@ define([
                };
             }
             Object.keys(failures).forEach(function(suiteName) {
-               charm.position(CHARM.Col.MessageTitle, messagesRow++);
-               charm.write(suiteName);
-               var suiteFailures = failures[suiteName];
-               Object.keys(suiteFailures).forEach(function(testName) {
-                  var testFailures = suiteFailures[testName],
-                     environments = Object.keys(testFailures).join(", ");
-                  charm.position(CHARM.Col.MessageTitle + CHARM.ProblemIndent, messagesRow++);
-                  charm.write("- " + testName);
-                  charm.display("bright");
-                  charm.write(" [" + environments + "]");
-                  charm.display("reset");
+               messages.failures.push(suiteName);
+               var failingTests = failures[suiteName];
+               Object.keys(failingTests).forEach(function(testName) {
+                  var testFailingEnvironments = failingTests[testName],
+                     environments = Object.keys(testFailingEnvironments).join(", "),
+                     failureMessage = CHARM.ProblemPrefix + testName;
+                  failureMessage += ANSI_CODES.Bright + " [" + environments + "]" + ANSI_CODES.Reset;
+                  messages.failures.push(failureMessage);
                });
             });
 
-            // Blank row before problems
-            messagesRow++;
-
-            // Output problems
+            // Generate problem messages
             Object.keys(this.problems).forEach(function(problemType) {
 
                // Get the problem collection and construct artificially if empty
@@ -818,38 +804,100 @@ define([
                   };
                }
 
-               // Output the title for this problem type
-               charm.position(CHARM.Col.MessageTitle, messagesRow++);
-               charm.display("bright");
-               charm.write(problemType.toUpperCase());
-               charm.display("reset");
-
-               // Output the groups and their counts
+               // Log the groups and their counts
                Object.keys(problems).forEach(function(groupName) {
-
-                  // Output the group name
-                  charm.position(CHARM.Col.MessageTitle, messagesRow++);
-                  charm.write(groupName);
-
-                  // Show the messages for this group
-                  var messages = problems[groupName];
-                  Object.keys(messages).forEach(function(message) {
-                     var messageCount = messages[message].count;
-                     charm.position(CHARM.Col.MessageTitle + CHARM.ProblemIndent, messagesRow++);
-                     charm.write("- \"" + message + "\"");
+                  messages[problemType].push(groupName);
+                  var groupProblems = problems[groupName];
+                  Object.keys(groupProblems).forEach(function(problemMessage) {
+                     var messageCount = groupProblems[problemMessage].count,
+                        messageOutput = CHARM.ProblemPrefix + problemMessage;
                      if (messageCount && messageCount > 1) {
-                        charm.write(" (x" + messageCount + ")");
+                        messageOutput += " (x" + messageCount + ")";
                      }
+                     messages[problemType].push(messageOutput);
                   });
                });
-
-               // Blank line between problem types
-               messagesRow++;
-
             }, this);
 
-            // Update last-row
-            this.state.charm.finalRow = messagesRow + 1;
+            // Calculate how many rows of messages to show
+            var availableRowsForMessages = this.totalMessageRows - 7, // Four titles, three blank rows between
+               totalMessagesToDisplay = 0,
+               failureLines = messages.failures.length,
+               errorLines = messages.errors.length,
+               warningLines = messages.warnings.length,
+               deprecationLines = messages.deprecations.length;
+            if ((failureLines + errorLines + warningLines + warningLines) > availableRowsForMessages) {
+
+               // Work out the ostensible max height of each message group if all are full
+               var maxLines = Math.floor(availableRowsForMessages / 4),
+                  newFailureLines = Math.min(failureLines, maxLines),
+                  newErrorLines = Math.min(errorLines, maxLines),
+                  newWarningLines = Math.min(warningLines, maxLines),
+                  newDeprecationLines = Math.min(deprecationLines, maxLines),
+                  linesPool = (availableRowsForMessages - newFailureLines - newErrorLines - newWarningLines - newDeprecationLines);
+
+               // Add more lines to each message group (note priority order)
+               while (linesPool) {
+                  (newFailureLines < failureLines) && linesPool-- && newFailureLines++;
+                  (newErrorLines < errorLines) && linesPool-- && newErrorLines++;
+                  (newWarningLines < warningLines) && linesPool-- && newWarningLines++;
+                  (newDeprecationLines < deprecationLines) && linesPool-- && newDeprecationLines++;
+               }
+
+               // Update the collections
+               messages.failures = messages.failures.reverse().slice(0, newFailureLines).reverse();
+               messages.errors = messages.errors.reverse().slice(0, newErrorLines).reverse();
+               messages.warnings = messages.warnings.reverse().slice(0, newWarningLines).reverse();
+               messages.deprecations = messages.deprecations.reverse().slice(0, newDeprecationLines).reverse();
+
+               // Indicate on first line if previous lines hidden
+               if (newFailureLines < failureLines) {
+                  messages.failures[0] = ANSI_CODES.Dim + CHARM.ProblemsCroppedMessage + ANSI_CODES.Reset;
+               }
+               if (newErrorLines < errorLines) {
+                  messages.errors[0] = ANSI_CODES.Dim + CHARM.ProblemsCroppedMessage + ANSI_CODES.Reset;
+               }
+               if (newWarningLines < warningLines) {
+                  messages.warnings[0] = ANSI_CODES.Dim + CHARM.ProblemsCroppedMessage + ANSI_CODES.Reset;
+               }
+               if (newDeprecationLines < deprecationLines) {
+                  messages.deprecations[0] = ANSI_CODES.Dim + CHARM.ProblemsCroppedMessage + ANSI_CODES.Reset;
+               }
+            }
+
+            // Remove previous messages
+            charm.position(0, messagesRow);
+            charm.erase("down");
+
+            // Output the messages (array literal determines output order)
+            var messageGroups = ["failures", "errors", "warnings", "deprecations"];
+            messageGroups.forEach(function(groupName) {
+
+               // Display the title (broken to avoid weird grunt formatting)
+               charm.position(CHARM.Col.MessageTitle, messagesRow);
+               charm.display("bright");
+               charm.write(groupName.toUpperCase().substr(0, 1));
+               charm.position(CHARM.Col.MessageTitle + 1, messagesRow++);
+               charm.write(groupName.toUpperCase().substr(1));
+               charm.display("reset");
+
+               // Display the messages
+               var messageLines = messages[groupName];
+               messageLines.forEach(function(nextLine) {
+                  charm.position(CHARM.Col.MessageTitle, messagesRow++);
+                  var maxLineLength = this.terminalInfo.cols - 7; // 7 = ellipsis length (3) + side-margins (2x2)
+                  if (nextLine.length > maxLineLength) {
+                     nextLine = nextLine.slice(0, maxLineLength) + "...";
+                  }
+                  charm.write(nextLine + ANSI_CODES.Reset);
+               }, this);
+
+               // Line-break before next set of messages
+               messagesRow++;
+            }, this);
+
+            // Update last-row state-variable
+            this.state.charm.finalRow = messagesRow;
 
             // Reset cursor
             this.resetCursor();
@@ -1058,7 +1106,11 @@ define([
        * @param {Object} executor The test executor
        */
       runStart: function( /*jshint unused:false*/ executor) {
-         helper.terminalInfo = executor.config.terminalInfo;
+         var terminalInfo = executor.config.terminalInfo;
+         helper.terminalInfo = {
+            cols: terminalInfo.cols || 150,
+            rows: terminalInfo.rows || 35
+         };
          helper.startTime = Date.now();
          helper.initCharm();
          helper.requestRedraw();

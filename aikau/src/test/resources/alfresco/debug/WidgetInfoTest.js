@@ -117,5 +117,6 @@ registerSuite(function(){
       "Post Coverage Results": function() {
          TestCommon.alfPostCoverageResults(this, browser);
       }
+   };
    });
 });
