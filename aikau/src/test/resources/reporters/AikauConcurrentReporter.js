@@ -619,6 +619,38 @@ define([
       },
 
       /**
+       * Convert a milliseconds value to a human readable minutes and seconds value
+       *
+       * @instance
+       * @param {int} ms The number of milliseconds
+       * @returns {string} The human readable time string
+       */
+      msToTimeLeft: function(ms) {
+
+         // Declare result variable
+         var timeLeftMessage;
+
+         // Just go by minutes remaining, unless over 10 minutes, then go by 5 minute intervals
+         var minsRemaining = ms / 1000 / 60,
+            modifiedMins;
+         if (minsRemaining === 0) {
+            timeLeftMessage = "0 mins";
+         } else if (minsRemaining < 1) {
+            timeLeftMessage = "< 1 min";
+         } else {
+            modifiedMins = Math.ceil(minsRemaining);
+            if (modifiedMins > 10) {
+               modifiedMins = Math.ceil(minsRemaining / 5) * 5;
+            }
+            timeLeftMessage = modifiedMins + " mins";
+         }
+         timeLeftMessage += " remaining";
+
+         // Pass back the message
+         return timeLeftMessage;
+      },
+
+      /**
        * Output final results in full detail
        *
        * @instance
@@ -756,7 +788,7 @@ define([
        * @instance
        */
       redraw: function() {
-         /*jshint maxstatements:false*/
+         /*jshint maxstatements:false,maxcomplexity:false*/
 
          // Catch all errors
          try {
@@ -791,12 +823,12 @@ define([
                percentComplete = Math.floor(ratioComplete * 100) + "%",
                timeTaken = Date.now() - this.startTime,
                timeLeftMs = timeTaken * ((1 / ratioComplete) - 1),
-               timeLeftMins = this.msToHumanReadable(timeLeftMs),
+               timeLeftMins = this.msToTimeLeft(timeLeftMs),
                timeLeftMessage = this.pad(timeLeftMins, CHARM.Col.StatusName - CHARM.Col.ProgressValue, " ", true);
             charm.position(CHARM.Col.ProgressValue, CHARM.Row.PercentComplete);
             charm.write(percentComplete);
             charm.position(CHARM.Col.ProgressValue, CHARM.Row.TimeRemaining);
-            if (ratioComplete > 50 || timeTaken > 5000) {
+            if (ratioComplete > 0.5 || (timeTaken > 5000 && ratioComplete > 0.1)) {
                charm.write(timeLeftMessage);
             } else {
                charm.write("Calculating...");
@@ -865,7 +897,6 @@ define([
 
             // Calculate how many rows of messages to show
             var availableRowsForMessages = this.totalMessageRows - 7, // Four titles, three blank rows between
-               totalMessagesToDisplay = 0,
                failureLines = messages.failures.length,
                errorLines = messages.errors.length,
                warningLines = messages.warnings.length,
