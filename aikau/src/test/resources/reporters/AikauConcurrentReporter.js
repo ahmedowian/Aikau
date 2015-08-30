@@ -18,7 +18,9 @@
  */
 
 /**
- * Reporter for running concurrent Intern tests
+ * Reporter for running concurrent Intern tests.<br />
+ * <br />
+ * NOTE: If getting unexplained errors, try turning on BreakOnError in the CONFIG constants object.
  *
  * @author Martin Doyle
  * @module AikauConcurrentReporter
@@ -67,7 +69,7 @@ define([
     * @type {Object}
     */
    var CHARM = {
-      BottomMargin: 2,
+      BottomMargin: 1,
       Col: {
          Default: 3,
          MessageString: 3,
@@ -113,7 +115,7 @@ define([
     * @type {Object}
     */
    var CONFIG = {
-      BreakOnError: true,
+      BreakOnError: false,
       Title: "AIKAU UNIT TESTS",
       TitleHelp: "(Ctrl-C to abort)"
    };
@@ -564,7 +566,6 @@ define([
             try {
 
                // Log as normal
-               // TODO We probably need to output the error stack somewhere, ideally optionally
                var collectionObj = this.problems[type],
                   groupObj = collectionObj[groupName] || {},
                   message = isErrorObj ? errorOrMessage.message : errorOrMessage,
@@ -630,12 +631,6 @@ define([
          // Next, stop using charm ... it's all console logging from now on
          charm.destroy();
 
-         // Output full-details title
-         console.log(ANSI_CODES.Bright);
-         console.log("============================== FULL DETAILS ==============================");
-         console.log("");
-         console.log(ANSI_CODES.Reset);
-
          // Log the failures
          var loggedSectionTitle = false;
          Object.keys(this.environments).forEach(function(envName) {
@@ -659,9 +654,11 @@ define([
             var failingSuiteNames = Object.keys(failingSuites);
             if (failingSuiteNames.length) {
 
-               // Output the section title
+               // Output the section title (break "fail" to avoid grunt output weirdness)
                if (!loggedSectionTitle) {
-                  console.log(ANSI_CODES.Bright + "=== FAILURES ===" + ANSI_CODES.Reset);
+                  console.log(ANSI_CODES.Bright + "====================" + ANSI_CODES.Reset);
+                  console.log(ANSI_CODES.Bright + "===== FA" + ANSI_CODES.Bright + "ILURES =====" + ANSI_CODES.Reset);
+                  console.log(ANSI_CODES.Bright + "====================" + ANSI_CODES.Reset);
                   loggedSectionTitle = true;
                }
 
@@ -672,17 +669,64 @@ define([
                // Output the suites/tests/errors
                Object.keys(failingSuites).forEach(function(suiteName) {
                   console.log("");
-                  console.log(ANSI_CODES.Bright + ANSI_CODES.FgRed + "\"" + suiteName + "\"" + ANSI_CODES.Reset);
+                  console.log(ANSI_CODES.Bright + ANSI_CODES.FgRed + suiteName + ANSI_CODES.Reset);
                   var failingTests = failingSuites[suiteName];
                   Object.keys(failingTests).forEach(function(testName) {
                      var errorMessage = failingTests[testName];
-                     console.log(ANSI_CODES.Bright + testName + ANSI_CODES.Reset);
+                     console.log(ANSI_CODES.Bright + "\"" + testName + "\"" + ANSI_CODES.Reset);
                      console.log(errorMessage);
                   });
                });
             }
 
          }, this);
+
+         // Log the other problems
+         loggedSectionTitle = false;
+         Object.keys(this.problems).forEach(function(problemType) {
+
+            // Run through the problems
+            var problems = this.problems[problemType];
+            Object.keys(problems).forEach(function(groupName) {
+
+               // Log title
+               if (!loggedSectionTitle) {
+                  var sectionTitle = "===== " + problemType.toUpperCase() + " =====",
+                     underOverLine = new Array(sectionTitle.length + 1).join("=");
+                  console.log("");
+                  console.log("");
+                  console.log(ANSI_CODES.Bright + underOverLine + ANSI_CODES.Reset);
+                  console.log(ANSI_CODES.Bright + sectionTitle + ANSI_CODES.Reset);
+                  console.log(ANSI_CODES.Bright + underOverLine + ANSI_CODES.Reset);
+                  loggedSectionTitle = true;
+               }
+
+               // Log group name
+               console.log("");
+               console.log(ANSI_CODES.Bright + ANSI_CODES.FgRed + groupName + ANSI_CODES.Reset);
+
+               // Log groups' problems
+               var groupProblems = problems[groupName];
+               Object.keys(groupProblems).forEach(function(problemMessage) {
+                  var problem = groupProblems[problemMessage],
+                     messageToOutput = "\"" + problemMessage + "\"";
+                  if (problem.count > 1) {
+                     messageToOutput += " (x" + problem.count + ")";
+                  }
+                  console.log(ANSI_CODES.Bright + messageToOutput + ANSI_CODES.Reset);
+                  if (problem.stack) {
+                     console.log(problem.stack);
+                  }
+               });
+            });
+
+            // Reset title flag
+            loggedSectionTitle = false;
+         }, this);
+
+         // Couple of lines space
+         console.log("");
+         console.log("");
       },
 
       /**
