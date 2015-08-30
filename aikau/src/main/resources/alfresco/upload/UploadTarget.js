@@ -163,26 +163,58 @@ define(["dojo/_base/declare",
 
       widgetsForUploadHistoryTargets: [
          {
-            name: "alfresco/documentlibrary/AlfDocument",
+            name: "alfresco/upload/UploadFolder",
             config: {
                pubSubScope: "NODE_HISTORY_{index}",
                nodeRef: "{nodeRef}",
                xhrRequired: true,
                widgets: [
                   {
-                     name: "alfresco/renderers/Thumbnail"
-                  },
-                  {
-                     name: "alfresco/renderers/Property",
+                     name: "alfresco/layout/HorizontalWidgets",
                      config: {
-                        propertyToRender: "node.properties.cm:name",
-                        renderSize: "large"
-                     }
-                  },
-                  {
-                     name: "alfresco/renderers/Property",
-                     config: {
-                        propertyToRender: "node.properties.cm:description"
+                        widgets: [
+                           {
+                              name: "alfresco/renderers/Thumbnail",
+                              widthPx: 80
+                           },
+                           {
+                              name: "alfresco/layout/VerticalWidgets",
+                              config: {
+                                 widgets: [
+                                    {
+                                       name: "alfresco/renderers/Property",
+                                       config: {
+                                          propertyToRender: "node.properties.cm:name",
+                                          renderSize: "large",
+                                          renderOnNewLine: true
+                                       }
+                                    },
+                                    {
+                                       name: "alfresco/renderers/Property",
+                                       config: {
+                                          propertyToRender: "node.properties.cm:description",
+                                          renderOnNewLine: true
+                                       }
+                                    },
+                                    {
+                                       name: "alfresco/renderers/Property",
+                                       config: {
+                                          propertyToRender: "location.site.title",
+                                          renderOnNewLine: true,
+                                          renderFilter: [
+                                             {
+                                                property: "location.site",
+                                                values: [null],
+                                                renderOnAbsentProperty: true,
+                                                negate: true
+                                             }
+                                          ]
+                                       }
+                                    }
+                                 ]
+                              }
+                           }
+                        ]
                      }
                   }
                ]
