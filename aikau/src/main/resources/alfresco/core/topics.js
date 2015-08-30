@@ -166,6 +166,17 @@ define([],function() {
       GET_DOCUMENT: "ALF_RETRIEVE_SINGLE_DOCUMENT_REQUEST",
 
       /**
+       * This topic can be published to request a user preference be returned. It is typically handled by 
+       * the [PreferenceService]{@link module:alfresco/services/PreferenceService}.
+       *
+       * @instance
+       * @type {string}
+       * @default
+       * @since 1.0.34
+       */
+      GET_PREFERENCE: "ALF_PREFERENCE_GET",
+
+      /**
        * This topic is fired automatically whenever a notification is destroyed.
        *
        * @instance
@@ -246,6 +257,17 @@ define([],function() {
       SCROLL_NEAR_BOTTOM: "ALF_SCROLL_NEAR_BOTTOM",
 
       /**
+       * This topic can be published to set a user preference. It is typically handled by 
+       * the [PreferenceService]{@link module:alfresco/services/PreferenceService}.
+       *
+       * @instance
+       * @type {string}
+       * @default
+       * @since 1.0.34
+       */
+      SET_PREFERENCE: "ALF_PREFERENCE_SET",
+
+      /**
        * This topic can be used to publish a request to change the title of a page. It is subscribed to by the
        * [Title widget]{@link module:alfresco/header/Title} and published by the 
        * [SetTitle widget]{@link module:alfresco/header/SetTitle}
@@ -254,6 +276,19 @@ define([],function() {
        * @type {string}
        * @default
        */
-      UPDATE_PAGE_TITLE: "ALF_UPDATE_PAGE_TITLE"
+      UPDATE_PAGE_TITLE: "ALF_UPDATE_PAGE_TITLE",
+
+
+      /**
+       * This topic can be published to display a dialog that allows users to select one or more files
+       * to upload and the location to upload them to. This is typically handled by the 
+       * [ContentService]{@link module:alfresco/services/ContentService}.
+       *
+       * @instance
+       * @type {string}
+       * @default
+       * @since 1.0.34
+       */
+      UPLOAD_TO_UNKNOWN_LOCATION: "ALF_UPLOAD_TO_UNKNOWN_LOCATION"
    };
 });

@@ -1,0 +1,19 @@
+.alfresco-upload-UploadTarget {
+
+   border: 3px dashed @standard-border-color;
+   height: 200px;
+   margin: 5px;
+   display: table;
+   vertical-align: top;
+
+   .alfresco-upload-UploadTarget__centered {
+      display: table-cell;
+      text-align: center;
+      vertical-align: middle;
+      width: 100%;
+
+      .alfresco-upload-UploadTarget__title {
+      }
+   }
+   
+}
