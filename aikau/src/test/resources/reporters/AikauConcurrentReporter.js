@@ -92,7 +92,8 @@ define([
          Deprecations: 14,
          ProgressTitle: 6,
          PercentComplete: 12,
-         TimeRemaining: 13,
+         TimeTaken: 13,
+         TimeRemaining: 14,
          ProgressBar: 9,
          MessagesLine: 16
       },
@@ -476,6 +477,8 @@ define([
          charm.display("reset");
          charm.position(CHARM.Col.ProgressName, CHARM.Row.PercentComplete);
          charm.write("Percent complete: ");
+         charm.position(CHARM.Col.ProgressName, CHARM.Row.TimeTaken);
+         charm.write("Time Taken: ");
          charm.position(CHARM.Col.ProgressName, CHARM.Row.TimeRemaining);
          charm.write("Time Remaining: ");
 
@@ -602,7 +605,7 @@ define([
             secText,
             timeInMinsAndSecs;
          if (wholeMins) {
-            roundedSecs = Math.round(ms / 1000) % (wholeMins * 60);
+            roundedSecs = Math.floor(ms / 1000) % (wholeMins * 60);
             minText = wholeMins === 1 ? "minute" : "minutes";
             secText = roundedSecs === 1 ? "second" : "seconds";
             if (roundedSecs) {
@@ -611,7 +614,7 @@ define([
                timeInMinsAndSecs = wholeMins + " " + minText;
             }
          } else {
-            roundedSecs = Math.ceil(ms / 1000);
+            roundedSecs = Math.floor(ms / 1000);
             secText = roundedSecs === 1 ? "second" : "seconds";
             timeInMinsAndSecs = roundedSecs + " " + secText;
          }
@@ -818,30 +821,6 @@ define([
             charm.position(CHARM.Col.StatusValue, CHARM.Row.Deprecations);
             charm.write(this.testCounts.deprecations);
 
-            // Update progress info
-            var ratioComplete = this.testCounts.run / this.testCounts.total,
-               percentComplete = Math.floor(ratioComplete * 100) + "%",
-               timeTaken = Date.now() - this.startTime,
-               timeLeftMs = timeTaken * ((1 / ratioComplete) - 1),
-               timeLeftMins = this.msToTimeLeft(timeLeftMs),
-               timeLeftMessage = this.pad(timeLeftMins, CHARM.Col.StatusName - CHARM.Col.ProgressValue, " ", true);
-            charm.position(CHARM.Col.ProgressValue, CHARM.Row.PercentComplete);
-            charm.write(percentComplete);
-            charm.position(CHARM.Col.ProgressValue, CHARM.Row.TimeRemaining);
-            if (ratioComplete > 0.5 || (timeTaken > 5000 && ratioComplete > 0.1)) {
-               charm.write(timeLeftMessage);
-            } else {
-               charm.write("Calculating...");
-            }
-
-            // Update the progress bar
-            var progressBarPartsComplete = Math.floor(ratioComplete * CHARM.ProgressBar.Length);
-            charm.position(CHARM.Col.ProgressName, CHARM.Row.ProgressBar);
-            for (var i = 0; i < progressBarPartsComplete; i++) {
-               charm.write(CHARM.ProgressBar.CompleteChar);
-            }
-            this.state.charm.progressBarCurrPos = CHARM.Col.ProgressName + progressBarPartsComplete;
-
             // Prepare object to contain messages
             var messages = {
                deprecations: [],
@@ -1026,12 +1005,46 @@ define([
             nextSpinnerIndex = 0,
             that = this;
          this.progressAnimInterval = setInterval(function() {
+
+            // Hide the cursor
             charm.cursor(false);
+
+            // Update progress info
+            var ratioComplete = that.testCounts.run / that.testCounts.total,
+               percentComplete = Math.floor(ratioComplete * 100) + "%",
+               timeTaken = Date.now() - that.startTime,
+               timeTakenMessage = that.msToHumanReadable(timeTaken),
+               timeLeftMs = timeTaken * ((1 / ratioComplete) - 1),
+               timeLeftMins = that.msToTimeLeft(timeLeftMs),
+               timeLeftMessage = that.pad(timeLeftMins, CHARM.Col.StatusName - CHARM.Col.ProgressValue, " ", true);
+            charm.position(CHARM.Col.ProgressValue, CHARM.Row.PercentComplete);
+            charm.write(percentComplete);
+            charm.position(CHARM.Col.ProgressValue, CHARM.Row.TimeTaken);
+            charm.write(timeTakenMessage);
+            charm.position(CHARM.Col.ProgressValue, CHARM.Row.TimeRemaining);
+            if (ratioComplete > 0.1 || (timeTaken > 60000 && ratioComplete > 0.05)) {
+               charm.write(timeLeftMessage);
+            } else {
+               charm.write("Calculating...");
+            }
+
+            // Update the progress bar
+            var progressBarPartsComplete = Math.floor(ratioComplete * CHARM.ProgressBar.Length);
+            charm.position(CHARM.Col.ProgressName, CHARM.Row.ProgressBar);
+            for (var i = 0; i < progressBarPartsComplete; i++) {
+               charm.write(CHARM.ProgressBar.CompleteChar);
+            }
+            that.state.charm.progressBarCurrPos = CHARM.Col.ProgressName + progressBarPartsComplete;
+
+            // Update the animation
             charm.position(that.state.charm.progressBarCurrPos, CHARM.Row.ProgressBar);
             charm.display("bright");
             charm.write(spinnerChars[nextSpinnerIndex++ % spinnerChars.length]);
             charm.display("reset");
+
+            // Put the cursor back
             that.resetCursor();
+
          }, this.progressAnimInterval);
       },
 
