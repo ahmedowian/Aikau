@@ -588,7 +588,7 @@ define([
             // Setup variables
             var testName = test.name,
                suiteName = test.parent.name,
-               errorMessage = test.error.message;
+               errorMessage = test.error.message || "N/A";
 
             // Calculate the environment name
             var parentTest = test,

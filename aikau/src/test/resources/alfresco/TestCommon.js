@@ -32,8 +32,9 @@ define(["intern/dojo/node!fs",
         "config/Config",
         "intern/dojo/Promise",
         "intern/dojo/node!leadfoot/helpers/pollUntil",
-        "intern/chai!assert"],
-        function(fs, http, os, lang, intern, Config, Promise, pollUntil, assert) {
+        "intern/chai!assert",
+        "intern/dojo/node!leadfoot/keys"], 
+        function(fs, http, os, lang, intern, Config, Promise, pollUntil, assert, keys) {
    return {
 
       /**
@@ -347,6 +348,47 @@ define(["intern/dojo/node!fs",
                   browser.setExecuteAsyncTimeout(existingTimeout);
                   throw error;
                });
+         };
+         command.session.tabToElement = function(selector, collectionIndex, maxTabs) {
+
+            // Setup variables
+            var tabbedToElement = false,
+               numTabs = 0,
+               dfd = new Promise.Deferred();
+
+            // Sanitise arguments
+            collectionIndex = collectionIndex || 0;
+            maxTabs = maxTabs || 20;
+            if (!selector) {
+               throw new Error("No valid selector provided in tabToElement()");
+            }
+
+            // Define tabAndCheck function
+            function tabAndCheck() {
+               return browser.pressKeys(keys.TAB)
+                  .execute(function(targetElemSelector, index) {
+                     var targetElem = document.querySelectorAll(targetElemSelector)[index];
+                     return targetElem && targetElem === document.activeElement;
+                  }, [selector, collectionIndex])
+                  .then(function(foundElem) {
+                     if (!foundElem && numTabs++ < maxTabs) {
+                        return tabAndCheck();
+                     } else {
+                        return foundElem;
+                     }
+                  });
+            }
+
+            // Tab until found
+            tabAndCheck().then(function(foundElem){
+               if(!foundElem) {
+                  assert.fail(null, null, "Unable to tab to element (maxTabs=" + maxTabs + ", index=" + collectionIndex + ", selector=\"" + selector + "\")");
+               }
+               dfd.resolve();
+            });
+
+            // Pass back the base promise
+            return dfd.promise;
          };
 
          return command;
