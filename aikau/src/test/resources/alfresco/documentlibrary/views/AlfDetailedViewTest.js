@@ -186,6 +186,8 @@ registerSuite(function(){
             .click()
             .end()
 
+         .getLastPublish("ALF_GET_COMMENTS", true)
+
          .findByCssSelector(".alfresco-documentlibrary-views-AlfDetailedViewItem:nth-child(1) .detail-item__commentsReveal > .content")
             .getSize()
             .then(function(size) {
