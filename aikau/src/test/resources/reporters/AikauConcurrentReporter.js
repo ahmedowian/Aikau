@@ -296,17 +296,24 @@ define([
        */
       animateProgressBar: function() {
 
-         // Hide the cursor
-         charm.cursor(false);
+         // Wrap all in try/catch
+         try {
 
-         // Update the animation
-         charm.position(this.state.charm.progressBarCurrPos, CHARM.Row.ProgressBar);
-         charm.display("bright");
-         charm.write(CHARM.SpinnerChars[this.state.charm.nextSpinnerIndex++ % CHARM.SpinnerChars.length]);
-         charm.display("reset");
+            // Hide the cursor
+            charm.cursor(false);
 
-         // Put the cursor back
-         this.resetCursor();
+            // Update the animation
+            charm.position(this.state.charm.progressBarCurrPos, CHARM.Row.ProgressBar);
+            charm.display("bright");
+            charm.write(CHARM.SpinnerChars[this.state.charm.nextSpinnerIndex++ % CHARM.SpinnerChars.length]);
+            charm.display("reset");
+
+            // Put the cursor back
+            this.resetCursor();
+
+         } catch (e) {
+            this.exitWithError(e, "Error running animateProgressBar()");
+         }
       },
 
       /**
@@ -369,88 +376,96 @@ define([
        * @returns {[type]} [description]
        */
       drawPageFramework: function() {
+         /*jshint maxstatements:false*/
 
-         // Delete everything on the page
-         charm.erase("screen");
+         // Wrap all in try/catch
+         try {
 
-         // Setup function variables
-         var i;
+            // Delete everything on the page
+            charm.erase("screen");
 
-         // Output the title
-         var titleMessageParts = [CONFIG.Title, CONFIG.TitleHelp],
-            underOverLineLength = titleMessageParts.join(" ").length + (CHARM.TitleIndent * 2);
-         charm.position(CHARM.Col.Default, CHARM.Row.Title - 1);
-         charm.display("bright");
-         for (i = 0; i < underOverLineLength; i++) {
-            charm.write("=");
-         }
-         charm.position(CHARM.Col.Default + CHARM.TitleIndent, CHARM.Row.Title);
-         charm.write(CONFIG.Title);
-         if (CONFIG.TitleHelp) {
-            charm.display("reset");
-            charm.write(" " + CONFIG.TitleHelp);
+            // Setup function variables
+            var i;
+
+            // Output the title
+            var titleMessageParts = [CONFIG.Title, CONFIG.TitleHelp],
+               underOverLineLength = titleMessageParts.join(" ").length + (CHARM.TitleIndent * 2);
+            charm.position(CHARM.Col.Default, CHARM.Row.Title - 1);
             charm.display("bright");
-         }
-         charm.position(CHARM.Col.Default, CHARM.Row.Title + 1);
-         for (i = 0; i < underOverLineLength; i++) {
-            charm.write("=");
-         }
-         charm.display("reset");
-
-         // Create the status section
-         charm.position(CHARM.Col.StatusName, CHARM.Row.StatusTitle);
-         charm.display("bright");
-         charm.write("STATUS");
-         charm.position(CHARM.Col.StatusName, CHARM.Row.Environments);
-         charm.display("reset");
-         charm.write("Environments: ");
-         charm.position(CHARM.Col.StatusName, CHARM.Row.Total);
-         charm.write("Total tests: ");
-         charm.position(CHARM.Col.StatusName, CHARM.Row.Passed);
-         charm.write("Passed: ");
-         charm.position(CHARM.Col.StatusName, CHARM.Row.Failed);
-         charm.write("Failed: ");
-         charm.position(CHARM.Col.StatusName, CHARM.Row.Skipped);
-         charm.write("Skipped: ");
-         charm.position(CHARM.Col.StatusName, CHARM.Row.Errors);
-         charm.write("Errors: ");
-         charm.position(CHARM.Col.StatusName, CHARM.Row.Warnings);
-         charm.write("Warnings: ");
-         charm.position(CHARM.Col.StatusName, CHARM.Row.Deprecations);
-         charm.write("Deprecations: ");
-
-         // Create the progress section
-         charm.position(CHARM.Col.ProgressName, CHARM.Row.ProgressTitle);
-         charm.display("bright");
-         charm.write("PROGRESS");
-         charm.display("reset");
-         charm.position(CHARM.Col.ProgressName, CHARM.Row.PercentComplete);
-         charm.write("Percent complete: ");
-         charm.position(CHARM.Col.ProgressName, CHARM.Row.TimeTaken);
-         charm.write("Time Taken: ");
-         charm.position(CHARM.Col.ProgressName, CHARM.Row.TimeRemaining);
-         charm.write("Time Remaining: ");
-
-         // Draw progress bar
-         charm.position(CHARM.Col.ProgressName, CHARM.Row.ProgressBar - 1);
-         for (i = 0; i < CHARM.ProgressBar.Length; i++) {
-            charm.display("bright");
-            charm.write(CHARM.ProgressBar.LineChar);
+            for (i = 0; i < underOverLineLength; i++) {
+               charm.write("=");
+            }
+            charm.position(CHARM.Col.Default + CHARM.TitleIndent, CHARM.Row.Title);
+            charm.write(CONFIG.Title);
+            if (CONFIG.TitleHelp) {
+               charm.display("reset");
+               charm.write(" " + CONFIG.TitleHelp);
+               charm.display("bright");
+            }
+            charm.position(CHARM.Col.Default, CHARM.Row.Title + 1);
+            for (i = 0; i < underOverLineLength; i++) {
+               charm.write("=");
+            }
             charm.display("reset");
-         }
-         charm.position(CHARM.Col.ProgressName, CHARM.Row.ProgressBar);
-         for (i = 0; i < CHARM.ProgressBar.Length; i++) {
-            charm.write(CHARM.ProgressBar.EmptyChar);
-         }
-         charm.position(CHARM.Col.ProgressName, CHARM.Row.ProgressBar + 1);
-         for (i = 0; i < CHARM.ProgressBar.Length; i++) {
-            charm.display("bright");
-            charm.write(CHARM.ProgressBar.LineChar);
-            charm.display("reset");
-         }
 
-         // Update the status text
-         this.updateStatus();
+            // Create the status section
+            charm.position(CHARM.Col.StatusName, CHARM.Row.StatusTitle);
+            charm.display("bright");
+            charm.write("STATUS");
+            charm.position(CHARM.Col.StatusName, CHARM.Row.Environments);
+            charm.display("reset");
+            charm.write("Environments: ");
+            charm.position(CHARM.Col.StatusName, CHARM.Row.Total);
+            charm.write("Total tests: ");
+            charm.position(CHARM.Col.StatusName, CHARM.Row.Passed);
+            charm.write("Passed: ");
+            charm.position(CHARM.Col.StatusName, CHARM.Row.Failed);
+            charm.write("Failed: ");
+            charm.position(CHARM.Col.StatusName, CHARM.Row.Skipped);
+            charm.write("Skipped: ");
+            charm.position(CHARM.Col.StatusName, CHARM.Row.Errors);
+            charm.write("Errors: ");
+            charm.position(CHARM.Col.StatusName, CHARM.Row.Warnings);
+            charm.write("Warnings: ");
+            charm.position(CHARM.Col.StatusName, CHARM.Row.Deprecations);
+            charm.write("Deprecations: ");
+
+            // Create the progress section
+            charm.position(CHARM.Col.ProgressName, CHARM.Row.ProgressTitle);
+            charm.display("bright");
+            charm.write("PROGRESS");
+            charm.display("reset");
+            charm.position(CHARM.Col.ProgressName, CHARM.Row.PercentComplete);
+            charm.write("Percent complete: ");
+            charm.position(CHARM.Col.ProgressName, CHARM.Row.TimeTaken);
+            charm.write("Time Taken: ");
+            charm.position(CHARM.Col.ProgressName, CHARM.Row.TimeRemaining);
+            charm.write("Time Remaining: ");
+
+            // Draw progress bar
+            charm.position(CHARM.Col.ProgressName, CHARM.Row.ProgressBar - 1);
+            for (i = 0; i < CHARM.ProgressBar.Length; i++) {
+               charm.display("bright");
+               charm.write(CHARM.ProgressBar.LineChar);
+               charm.display("reset");
+            }
+            charm.position(CHARM.Col.ProgressName, CHARM.Row.ProgressBar);
+            for (i = 0; i < CHARM.ProgressBar.Length; i++) {
+               charm.write(CHARM.ProgressBar.EmptyChar);
+            }
+            charm.position(CHARM.Col.ProgressName, CHARM.Row.ProgressBar + 1);
+            for (i = 0; i < CHARM.ProgressBar.Length; i++) {
+               charm.display("bright");
+               charm.write(CHARM.ProgressBar.LineChar);
+               charm.display("reset");
+            }
+
+            // Update the status text
+            this.updateStatus();
+
+         } catch (e) {
+            this.exitWithError(e, "Error drawPageFramework()");
+         }
       },
 
       /**
@@ -477,15 +492,22 @@ define([
        * @instance
        */
       finishUpdating: function() {
-         this.intervals.forEach(clearInterval);
-         charm.position(CHARM.Col.Default, CHARM.Row.ProgressBar);
-         charm.display("bright");
-         for (var i = 0; i < CHARM.ProgressBar.Length; i++) {
-            charm.write(CHARM.ProgressBar.CompleteChar);
+         // Wrap all in try/catch
+         try {
+
+            this.intervals.forEach(clearInterval);
+            charm.position(CHARM.Col.Default, CHARM.Row.ProgressBar);
+            charm.display("bright");
+            for (var i = 0; i < CHARM.ProgressBar.Length; i++) {
+               charm.write(CHARM.ProgressBar.CompleteChar);
+            }
+            charm.display("reset");
+            charm.write(" ");
+            this.resetCursor();
+
+         } catch (e) {
+            this.exitWithError(e, "Error running finishUpdating()");
          }
-         charm.display("reset");
-         charm.write(" ");
-         this.resetCursor();
       },
 
       /**
@@ -499,7 +521,7 @@ define([
       hitch: function(scope, func) {
          return function() {
             func.apply(scope, arguments);
-         }
+         };
       },
 
       /**
@@ -519,30 +541,37 @@ define([
        */
       initCharm: function() {
 
-         // Calculate message space
-         this.totalMessageRows = this.terminalInfo.rows - CHARM.Row.MessagesLine - CHARM.BottomMargin;
+         // Wrap all in try/catch
+         try {
 
-         // Setup charm
-         charm = new Charm();
-         charm.pipe(process.stdout);
-         charm.reset();
+            // Calculate message space
+            this.totalMessageRows = this.terminalInfo.rows - CHARM.Row.MessagesLine - CHARM.BottomMargin;
 
-         // Always cast to string when using charm.write()
-         var originalWriteMethod = charm.write;
-         charm.write = function(str) {
-            originalWriteMethod.call(charm, "" + str);
-         };
+            // Setup charm
+            charm = new Charm();
+            charm.pipe(process.stdout);
+            charm.reset();
 
-         // Do initial page draw
-         this.drawPageFramework();
+            // Always cast to string when using charm.write()
+            var originalWriteMethod = charm.write;
+            charm.write = function(str) {
+               originalWriteMethod.call(charm, "" + str);
+            };
 
-         // Setup redraw intervals
-         this.intervals = [
-            setInterval(this.hitch(this, this.drawPageFramework), 5000),
-            setInterval(this.hitch(this, this.updateProgressText), 1000),
-            setInterval(this.hitch(this, this.updateStatus), 500),
-            setInterval(this.hitch(this, this.animateProgressBar), 100)
-         ];
+            // Do initial page draw
+            this.drawPageFramework();
+
+            // Setup redraw intervals
+            this.intervals = [
+               setInterval(this.hitch(this, this.drawPageFramework), 5000),
+               setInterval(this.hitch(this, this.updateProgressText), 1000),
+               setInterval(this.hitch(this, this.updateStatus), 500),
+               setInterval(this.hitch(this, this.animateProgressBar), 100)
+            ];
+
+         } catch (e) {
+            this.exitWithError(e, "Error running initCharm()");
+         }
       },
 
       /**
@@ -602,7 +631,7 @@ define([
 
          // Do we need to break out immediately?
          var isErrorObj = errorOrMessage instanceof Error;
-         if (isErrorObj && CONFIG.BreakOnError) {
+         if (!charm || (isErrorObj && CONFIG.BreakOnError)) {
 
             // Break immediately and display error in console
             this.exitWithError(errorOrMessage, groupName + " error!");
@@ -842,38 +871,45 @@ define([
        */
       updateProgressText: function() {
 
-         // Hide the cursor
-         charm.cursor(false);
+         // Wrap all in try/catch
+         try {
 
-         // Calculate and update the text
-         var ratioComplete = this.testCounts.run / this.testCounts.total,
-            percentComplete = Math.floor(ratioComplete * 100) + "%",
-            timeTaken = Date.now() - this.startTime,
-            timeTakenMessage = this.msToHumanReadable(timeTaken),
-            timeLeftMs = timeTaken * ((1 / ratioComplete) - 1),
-            timeLeftMins = this.msToTimeLeft(timeLeftMs),
-            timeLeftMessage = this.pad(timeLeftMins, CHARM.Col.StatusName - CHARM.Col.ProgressValue, " ", true);
-         charm.position(CHARM.Col.ProgressValue, CHARM.Row.PercentComplete);
-         charm.write(percentComplete);
-         charm.position(CHARM.Col.ProgressValue, CHARM.Row.TimeTaken);
-         charm.write(timeTakenMessage);
-         charm.position(CHARM.Col.ProgressValue, CHARM.Row.TimeRemaining);
-         if (ratioComplete > 0.1 || (timeTaken > 60000 && ratioComplete > 0.05)) {
-            charm.write(timeLeftMessage);
-         } else {
-            charm.write("Calculating...");
+            // Hide the cursor
+            charm.cursor(false);
+
+            // Calculate and update the text
+            var ratioComplete = this.testCounts.run / this.testCounts.total,
+               percentComplete = Math.floor(ratioComplete * 100) + "%",
+               timeTaken = Date.now() - this.startTime,
+               timeTakenMessage = this.msToHumanReadable(timeTaken),
+               timeLeftMs = timeTaken * ((1 / ratioComplete) - 1),
+               timeLeftMins = this.msToTimeLeft(timeLeftMs),
+               timeLeftMessage = this.pad(timeLeftMins, CHARM.Col.StatusName - CHARM.Col.ProgressValue, " ", true);
+            charm.position(CHARM.Col.ProgressValue, CHARM.Row.PercentComplete);
+            charm.write(percentComplete);
+            charm.position(CHARM.Col.ProgressValue, CHARM.Row.TimeTaken);
+            charm.write(timeTakenMessage);
+            charm.position(CHARM.Col.ProgressValue, CHARM.Row.TimeRemaining);
+            if (ratioComplete > 0.1 || (timeTaken > 60000 && ratioComplete > 0.05)) {
+               charm.write(timeLeftMessage);
+            } else {
+               charm.write("Calculating...");
+            }
+
+            // Update the progress bar
+            var progressBarPartsComplete = Math.floor(ratioComplete * CHARM.ProgressBar.Length);
+            charm.position(CHARM.Col.ProgressName, CHARM.Row.ProgressBar);
+            for (var i = 0; i < progressBarPartsComplete; i++) {
+               charm.write(CHARM.ProgressBar.CompleteChar);
+            }
+            this.state.charm.progressBarCurrPos = CHARM.Col.ProgressName + progressBarPartsComplete;
+
+            // Put the cursor back
+            this.resetCursor();
+
+         } catch (e) {
+            this.exitWithError(e, "Error running updateProgressText()");
          }
-
-         // Update the progress bar
-         var progressBarPartsComplete = Math.floor(ratioComplete * CHARM.ProgressBar.Length);
-         charm.position(CHARM.Col.ProgressName, CHARM.Row.ProgressBar);
-         for (var i = 0; i < progressBarPartsComplete; i++) {
-            charm.write(CHARM.ProgressBar.CompleteChar);
-         }
-         this.state.charm.progressBarCurrPos = CHARM.Col.ProgressName + progressBarPartsComplete;
-
-         // Put the cursor back
-         this.resetCursor();
       },
 
       /**
