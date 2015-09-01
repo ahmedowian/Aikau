@@ -74,6 +74,7 @@ define([
          Default: 3,
          MessageString: 3,
          MessageTitle: 3,
+         ProgressBar: 3,
          ProgressName: 3,
          ProgressValue: 21,
          StatusName: 60,
@@ -106,6 +107,7 @@ define([
          Length: 50,
          LineChar: "-"
       },
+      SpinnerChars: "-\\|/-\\|/".split(""),
       TitleIndent: 1
    };
 
@@ -216,40 +218,6 @@ define([
       },
 
       /**
-       * How often to update the progress bar animation in milliseconds
-       *
-       * @instance
-       * @type {int}
-       * @default
-       */
-      progressAnimInterval: 100,
-
-      /**
-       * The pointer for the timeout used to help prevent redraws happening too often
-       *
-       * @instance 
-       * @type {Object}
-       */
-      redrawTimeout: null,
-
-      /**
-       * When the redraw function last ran as an epoch value in ms
-       *
-       * @instance
-       * @type {number}
-       */
-      redrawLastRun: 0,
-
-      /**
-       * How often to redraw as a minimum interval in milliseconds
-       *
-       * @instance
-       * @type {number}
-       * @default
-       */
-      redrawIntervalMs: 200,
-
-      /**
        * The start time of the test run as an epoch value in ms
        *
        * @instance
@@ -267,8 +235,9 @@ define([
        */
       state: {
          charm: {
-            progressBarCurrPos: 0,
-            finalRow: 0
+            finalRow: 0,
+            nextSpinnerIndex: 0,
+            progressBarCurrPos: CHARM.Col.ProgressBar
          }
       },
 
@@ -318,6 +287,26 @@ define([
        */
       warnings: {
          _name: "Warnings"
+      },
+
+      /**
+       * Animate the progress bar
+       *
+       * @instance
+       */
+      animateProgressBar: function() {
+
+         // Hide the cursor
+         charm.cursor(false);
+
+         // Update the animation
+         charm.position(this.state.charm.progressBarCurrPos, CHARM.Row.ProgressBar);
+         charm.display("bright");
+         charm.write(CHARM.SpinnerChars[this.state.charm.nextSpinnerIndex++ % CHARM.SpinnerChars.length]);
+         charm.display("reset");
+
+         // Put the cursor back
+         this.resetCursor();
       },
 
       /**
@@ -374,58 +363,18 @@ define([
       },
 
       /**
-       * Exit the process with the specified error
+       * Clear the page and draw the basic page framework
        *
        * @instance
-       * @param {Error} err The offending err
-       * @param {string} [message] An optional extra message string
+       * @returns {[type]} [description]
        */
-      exitWithError: function(err, message) {
-         if (charm) {
-            this.resetCursor();
-            charm.destroy();
-         }
-         console.error("");
-         message && console.error(message);
-         console.error(err.stack || err);
-         process.exit(1);
-      },
+      drawPageFramework: function() {
 
-      /**
-       * Increment the specified counter
-       *
-       * @instance
-       * @param {string} counterName The name of the counter to increment
-       */
-      incrementCounter: function(counterName) {
-         this.testCounts[counterName]++;
-         this.requestRedraw();
-      },
-
-      /**
-       * Initialise charm
-       *
-       * @instance
-       */
-      initCharm: function() {
-         /*jshint maxstatements:false*/
+         // Delete everything on the page
+         charm.erase("screen");
 
          // Setup function variables
          var i;
-
-         // Setup charm
-         charm = new Charm();
-         charm.pipe(process.stdout);
-         charm.reset();
-
-         // Calculate message space
-         this.totalMessageRows = this.terminalInfo.rows - CHARM.Row.MessagesLine - CHARM.BottomMargin;
-
-         // Always cast to string when using charm.write()
-         var originalWriteMethod = charm.write;
-         charm.write = function(str) {
-            originalWriteMethod.call(charm, "" + str);
-         };
 
          // Output the title
          var titleMessageParts = [CONFIG.Title, CONFIG.TitleHelp],
@@ -499,6 +448,101 @@ define([
             charm.write(CHARM.ProgressBar.LineChar);
             charm.display("reset");
          }
+
+         // Update the status text
+         this.updateStatus();
+      },
+
+      /**
+       * Exit the process with the specified error
+       *
+       * @instance
+       * @param {Error} err The offending err
+       * @param {string} [message] An optional extra message string
+       */
+      exitWithError: function(err, message) {
+         if (charm) {
+            this.resetCursor();
+            charm.destroy();
+         }
+         console.error("");
+         message && console.error(message);
+         console.error(err.stack || err);
+         process.exit(1);
+      },
+
+      /**
+       * Finish all update intervals and tidy up the progress bar
+       *
+       * @instance
+       */
+      finishUpdating: function() {
+         this.intervals.forEach(clearInterval);
+         charm.position(CHARM.Col.Default, CHARM.Row.ProgressBar);
+         charm.display("bright");
+         for (var i = 0; i < CHARM.ProgressBar.Length; i++) {
+            charm.write(CHARM.ProgressBar.CompleteChar);
+         }
+         charm.display("reset");
+         charm.write(" ");
+         this.resetCursor();
+      },
+
+      /**
+       * Create shortcut hitch function
+       *
+       * @instance
+       * @param {Object} scope The scope to be used
+       * @param {Function} func The function to call
+       * @returns {Function} The scoped function
+       */
+      hitch: function(scope, func) {
+         return function() {
+            func.apply(scope, arguments);
+         }
+      },
+
+      /**
+       * Increment the specified counter
+       *
+       * @instance
+       * @param {string} counterName The name of the counter to increment
+       */
+      incrementCounter: function(counterName) {
+         this.testCounts[counterName]++;
+      },
+
+      /**
+       * Initialise charm
+       *
+       * @instance
+       */
+      initCharm: function() {
+
+         // Calculate message space
+         this.totalMessageRows = this.terminalInfo.rows - CHARM.Row.MessagesLine - CHARM.BottomMargin;
+
+         // Setup charm
+         charm = new Charm();
+         charm.pipe(process.stdout);
+         charm.reset();
+
+         // Always cast to string when using charm.write()
+         var originalWriteMethod = charm.write;
+         charm.write = function(str) {
+            originalWriteMethod.call(charm, "" + str);
+         };
+
+         // Do initial page draw
+         this.drawPageFramework();
+
+         // Setup redraw intervals
+         this.intervals = [
+            setInterval(this.hitch(this, this.drawPageFramework), 5000),
+            setInterval(this.hitch(this, this.updateProgressText), 1000),
+            setInterval(this.hitch(this, this.updateStatus), 500),
+            setInterval(this.hitch(this, this.animateProgressBar), 100)
+         ];
       },
 
       /**
@@ -538,7 +582,7 @@ define([
             suiteFailures[testName] = testFailures;
             this.failures[suiteName] = suiteFailures;
 
-            // Increment the counter (this will automatically redraw)
+            // Increment the counter
             this.incrementCounter("failed");
 
          } catch (e) {
@@ -583,7 +627,6 @@ define([
                groupObj[message] = problem;
                collectionObj[groupName] = groupObj;
                this.testCounts[type]++;
-               this.requestRedraw();
 
             } catch (e) {
                this.exitWithError(e, "Error logging problem");
@@ -659,9 +702,6 @@ define([
        * @instance
        */
       outputFinalResults: function() {
-
-         // Do one final redraw to make sure the display's up to date
-         this.redraw();
 
          // Next, stop using charm ... it's all console logging from now on
          charm.destroy();
@@ -786,11 +826,62 @@ define([
       },
 
       /**
+       * Reset the cursor
+       *
+       * @instance
+       */
+      resetCursor: function() {
+         charm.position(0, this.state.charm.finalRow);
+         charm.cursor(true);
+      },
+
+      /**
+       * Update the progress text
+       *
+       * @instance
+       */
+      updateProgressText: function() {
+
+         // Hide the cursor
+         charm.cursor(false);
+
+         // Calculate and update the text
+         var ratioComplete = this.testCounts.run / this.testCounts.total,
+            percentComplete = Math.floor(ratioComplete * 100) + "%",
+            timeTaken = Date.now() - this.startTime,
+            timeTakenMessage = this.msToHumanReadable(timeTaken),
+            timeLeftMs = timeTaken * ((1 / ratioComplete) - 1),
+            timeLeftMins = this.msToTimeLeft(timeLeftMs),
+            timeLeftMessage = this.pad(timeLeftMins, CHARM.Col.StatusName - CHARM.Col.ProgressValue, " ", true);
+         charm.position(CHARM.Col.ProgressValue, CHARM.Row.PercentComplete);
+         charm.write(percentComplete);
+         charm.position(CHARM.Col.ProgressValue, CHARM.Row.TimeTaken);
+         charm.write(timeTakenMessage);
+         charm.position(CHARM.Col.ProgressValue, CHARM.Row.TimeRemaining);
+         if (ratioComplete > 0.1 || (timeTaken > 60000 && ratioComplete > 0.05)) {
+            charm.write(timeLeftMessage);
+         } else {
+            charm.write("Calculating...");
+         }
+
+         // Update the progress bar
+         var progressBarPartsComplete = Math.floor(ratioComplete * CHARM.ProgressBar.Length);
+         charm.position(CHARM.Col.ProgressName, CHARM.Row.ProgressBar);
+         for (var i = 0; i < progressBarPartsComplete; i++) {
+            charm.write(CHARM.ProgressBar.CompleteChar);
+         }
+         this.state.charm.progressBarCurrPos = CHARM.Col.ProgressName + progressBarPartsComplete;
+
+         // Put the cursor back
+         this.resetCursor();
+      },
+
+      /**
        * Do a redraw of the latest information
        *
        * @instance
        */
-      redraw: function() {
+      updateStatus: function() {
          /*jshint maxstatements:false,maxcomplexity:false*/
 
          // Catch all errors
@@ -957,112 +1048,8 @@ define([
             this.resetCursor();
 
          } catch (e) {
-            this.exitWithError(e, "Error running redraw()");
+            this.exitWithError(e, "Error running updateStatus()");
          }
-      },
-
-      /**
-       * Request a redraw (called to prevent it happening too often)
-       *
-       * @instance
-       */
-      requestRedraw: function() {
-         if (!charm) {
-            return;
-         }
-         var timeSinceLastRedraw = Date.now() - this.redrawLastRun,
-            runNow = timeSinceLastRedraw > this.redrawIntervalMs,
-            that = this;
-         if (runNow) {
-            this.redraw();
-            this.redrawLastRun = Date.now();
-         } else {
-            clearTimeout(this.redrawTimeout);
-            setTimeout(function() {
-               that.redrawLastRun = Date.now();
-               that.redraw();
-            }, this.redrawIntervalMs - timeSinceLastRedraw);
-         }
-      },
-
-      /**
-       * Reset the cursor
-       *
-       * @instance
-       */
-      resetCursor: function() {
-         charm.position(0, this.state.charm.finalRow);
-         charm.cursor(true);
-      },
-
-      /**
-       * Start the progress animation
-       *
-       * @instance
-       */
-      startProgressAnimation: function() {
-         var spinnerChars = "-\\|/-\\|/".split(""),
-            nextSpinnerIndex = 0,
-            that = this;
-         this.progressAnimInterval = setInterval(function() {
-
-            // Hide the cursor
-            charm.cursor(false);
-
-            // Update progress info
-            var ratioComplete = that.testCounts.run / that.testCounts.total,
-               percentComplete = Math.floor(ratioComplete * 100) + "%",
-               timeTaken = Date.now() - that.startTime,
-               timeTakenMessage = that.msToHumanReadable(timeTaken),
-               timeLeftMs = timeTaken * ((1 / ratioComplete) - 1),
-               timeLeftMins = that.msToTimeLeft(timeLeftMs),
-               timeLeftMessage = that.pad(timeLeftMins, CHARM.Col.StatusName - CHARM.Col.ProgressValue, " ", true);
-            charm.position(CHARM.Col.ProgressValue, CHARM.Row.PercentComplete);
-            charm.write(percentComplete);
-            charm.position(CHARM.Col.ProgressValue, CHARM.Row.TimeTaken);
-            charm.write(timeTakenMessage);
-            charm.position(CHARM.Col.ProgressValue, CHARM.Row.TimeRemaining);
-            if (ratioComplete > 0.1 || (timeTaken > 60000 && ratioComplete > 0.05)) {
-               charm.write(timeLeftMessage);
-            } else {
-               charm.write("Calculating...");
-            }
-
-            // Update the progress bar
-            var progressBarPartsComplete = Math.floor(ratioComplete * CHARM.ProgressBar.Length);
-            charm.position(CHARM.Col.ProgressName, CHARM.Row.ProgressBar);
-            for (var i = 0; i < progressBarPartsComplete; i++) {
-               charm.write(CHARM.ProgressBar.CompleteChar);
-            }
-            that.state.charm.progressBarCurrPos = CHARM.Col.ProgressName + progressBarPartsComplete;
-
-            // Update the animation
-            charm.position(that.state.charm.progressBarCurrPos, CHARM.Row.ProgressBar);
-            charm.display("bright");
-            charm.write(spinnerChars[nextSpinnerIndex++ % spinnerChars.length]);
-            charm.display("reset");
-
-            // Put the cursor back
-            that.resetCursor();
-
-         }, this.progressAnimInterval);
-      },
-
-      /**
-       * End the progress animation
-       *
-       * @instance
-       */
-      endProgressAnimation: function() {
-         clearInterval(this.progressAnimInterval);
-         charm.position(CHARM.Col.Default, CHARM.Row.ProgressBar);
-         charm.display("bright");
-         for (var i = 0; i < CHARM.ProgressBar.Length; i++) {
-            charm.write(CHARM.ProgressBar.CompleteChar);
-         }
-         charm.display("reset");
-         charm.write(" ");
-         this.resetCursor();
       }
    };
 
@@ -1183,7 +1170,7 @@ define([
        * @param {Object} executor The test executor
        */
       runEnd: function( /*jshint unused:false*/ executor) {
-         helper.endProgressAnimation();
+         helper.finishUpdating();
          helper.outputFinalResults();
       },
 
@@ -1201,8 +1188,6 @@ define([
          };
          helper.startTime = Date.now();
          helper.initCharm();
-         helper.requestRedraw();
-         helper.startProgressAnimation();
       },
 
       /**
