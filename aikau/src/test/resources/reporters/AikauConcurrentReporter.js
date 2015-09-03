@@ -382,10 +382,20 @@ define([
        * @instance
        */
       finishUpdating: function() {
+         
          // Wrap all in try/catch
          try {
 
+            // Do final render
+            this.renderPageFramework();
+            this.renderProgressText();
+            this.renderStatus();
+            this.renderProgressBar();
+
+            // Clear the intervals
             this.intervals.forEach(clearInterval);
+
+            // "Finish" the progress bar
             charm.position(CHARM.Col.Default, CHARM.Row.ProgressBar);
             charm.display("bright");
             for (var i = 0; i < CHARM.ProgressBar.Length; i++) {
@@ -393,6 +403,8 @@ define([
             }
             charm.display("reset");
             charm.write(" ");
+
+            // Put the cursor back
             this.resetCursor();
 
          } catch (e) {
