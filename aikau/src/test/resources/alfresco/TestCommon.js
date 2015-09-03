@@ -127,7 +127,7 @@ define(["intern/dojo/node!fs",
        * @param {string} testWebScriptPrefix Optional prefix to use before the WebScript URL
        * @param {boolean} noPageLoadError Optional boolean to suppress page load failure errors
        */
-      loadTestWebScript: function (browser, testWebScriptURL, testName, testWebScriptPrefix, noPageLoadError) {
+      loadTestWebScript: function(browser, testWebScriptURL, testName, testWebScriptPrefix, noPageLoadError) {
          this._applyTimeouts(browser);
          this._maxWindow(browser);
          this._cancelModifierKeys(browser);
@@ -141,7 +141,7 @@ define(["intern/dojo/node!fs",
             .then(
                function (element) {
                },
-               function (error) {
+               function(error) {
                   // Failed to load, trying again...
                   browser.refresh();
                })
@@ -152,10 +152,10 @@ define(["intern/dojo/node!fs",
                   return elements.length > 0 ? true : null;
                }, [], 10000, 1000))
             .then(
-               function (element) {
+               function(element) {
                   // Loaded successfully
                },
-               function (error) {
+               function(error) {
                   // Failed to load after two attempts
                   if (noPageLoadError === true)
                   {
@@ -167,8 +167,8 @@ define(["intern/dojo/node!fs",
                   }
                })
             .end();
-         command.session.alfPostCoverageResults = function (newBrowser) { 
-            return newBrowser; 
+         command.session.alfPostCoverageResults = function(newBrowser) {
+            return newBrowser;
          };
          command.session.screenieIndex = 0;
          command.session.screenie = function(description) {
@@ -359,7 +359,7 @@ define(["intern/dojo/node!fs",
 
             // Sanitise arguments
             collectionIndex = collectionIndex || 0;
-            maxTabs = maxTabs || 20;
+            maxTabs = maxTabs || 10;
             if (!selector) {
                throw new Error("No valid selector provided in tabToElement()");
             }
@@ -372,20 +372,23 @@ define(["intern/dojo/node!fs",
                      return targetElem && targetElem === document.activeElement;
                   }, [selector, collectionIndex])
                   .then(function(foundElem) {
-                     if (!foundElem && numTabs++ < maxTabs) {
+                     if (typeof foundElem === "undefined") {
+                        throw new Error("Unable to find target element with selector \"" + selector + "\" and index " + collectionIndex);
+                     } else if (!foundElem && numTabs++ < maxTabs) {
                         return tabAndCheck();
+                     } else if (!foundElem) {
+                        throw new Error("Unable to tab to element with selector \"" + selector + "\" after " + maxTabs + " attempts");
                      } else {
-                        return foundElem;
+                        return true;
                      }
                   });
             }
 
             // Tab until found
-            tabAndCheck().then(function(foundElem){
-               if(!foundElem) {
-                  assert.fail(null, null, "Unable to tab to element (maxTabs=" + maxTabs + ", index=" + collectionIndex + ", selector=\"" + selector + "\")");
-               }
+            tabAndCheck().then(function(foundElem) {
                dfd.resolve();
+            }, function(err) {
+               dfd.reject(err);
             });
 
             // Pass back the base promise
