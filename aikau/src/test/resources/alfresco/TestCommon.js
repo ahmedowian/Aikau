@@ -335,8 +335,8 @@ define(["intern/dojo/node!fs",
                      // Construct the error message
                      var customMessage = messageIfError ? messageIfError + ": " : "",
                         entryType = opts.type || "PUBorSUB",
-                        topic = opts.isGlobal ? opts.topic : "*" + opts.topic,
-                        errorMessage = "Unable to find a " + entryType + " of " + topic + " (timeout=" + opts.queryTimeout + "ms)";
+                        topic = opts.isGlobal ? opts.topic + " (global)" : "*" + opts.topic,
+                        errorMessage = "Unable to find a " + entryType + " of " + topic + " with timeout of " + opts.queryTimeout + "ms)";
 
                      // Throw the error
                      throw new Error(customMessage + errorMessage);

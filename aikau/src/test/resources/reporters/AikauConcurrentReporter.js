@@ -964,27 +964,42 @@ define([
             // Hide cursor
             charm.cursor(false);
 
-            // Create environments string
+            // Create environments message
             var environmentsMessage = "Updating...",
                spaceToDisplayEnvironments = this.terminalInfo.cols - CHARM.Col.StatusValue - CHARM.ScreenMargin;
-            if(environmentNames.length) {
+            if (environmentNames.length) {
                environmentsMessage = environmentNames.length + " (" + environmentNames.join(", ") + ")";
-               if(environmentsMessage.length > spaceToDisplayEnvironments - 4) {
-                  environmentsMessage = environmentsMessage.substr(0, spaceToDisplayEnvironments - 4) + "...)"
+               if (environmentsMessage.length > spaceToDisplayEnvironments - 4) {
+                  environmentsMessage = environmentsMessage.substr(0, spaceToDisplayEnvironments - 4) + "...)";
                }
+            }
+
+            // Create passed/failed/skipped messages
+            var total = this.testCounts.total,
+               passed = this.testCounts.passed,
+               failed = this.testCounts.failed,
+               skipped = this.testCounts.skipped;
+            if (passed && passed !== total) {
+               passed += " (" + (passed / total * 100).toFixed(1) + "%)"
+            }
+            if (failed && failed !== total) {
+               failed += " (" + (failed / total * 100).toFixed(1) + "%)"
+            }
+            if (skipped && skipped !== total) {
+               skipped += " (" + (skipped / total * 100).toFixed(1) + "%)"
             }
 
             // Position, write, repeat (status info)
             charm.position(CHARM.Col.StatusValue, CHARM.Row.Environments);
             charm.write(environmentsMessage);
             charm.position(CHARM.Col.StatusValue, CHARM.Row.Total);
-            charm.write(this.testCounts.total);
+            charm.write(total);
             charm.position(CHARM.Col.StatusValue, CHARM.Row.Passed);
-            charm.write(this.testCounts.passed);
+            charm.write(passed);
             charm.position(CHARM.Col.StatusValue, CHARM.Row.Failed);
-            charm.write(this.testCounts.failed);
+            charm.write(failed);
             charm.position(CHARM.Col.StatusValue, CHARM.Row.Skipped);
-            charm.write(this.testCounts.skipped);
+            charm.write(skipped);
             charm.position(CHARM.Col.StatusValue, CHARM.Row.Errors);
             charm.write(this.testCounts.errors);
             charm.position(CHARM.Col.StatusValue, CHARM.Row.Warnings);
