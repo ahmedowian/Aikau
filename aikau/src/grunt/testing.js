@@ -81,8 +81,7 @@ module.exports = function(grunt) {
          dev: {
             options: {
                runType: "runner",
-               config: "src/test/resources/intern",
-               doCoverage: false
+               config: "src/test/resources/intern"
             }
          },
          dev_coverage: {
@@ -95,22 +94,19 @@ module.exports = function(grunt) {
          local: {
             options: {
                runType: "runner",
-               config: "src/test/resources/intern_local",
-               doCoverage: false
+               config: "src/test/resources/intern_local"
             }
          },
          sl: {
             options: {
                runType: "runner",
-               config: "src/test/resources/intern_sl",
-               doCoverage: false
+               config: "src/test/resources/intern_sl"
             }
          },
          grid: {
             options: {
                runType: "runner",
-               config: "src/test/resources/intern_grid",
-               doCoverage: false
+               config: "src/test/resources/intern_grid"
             }
          }
       }

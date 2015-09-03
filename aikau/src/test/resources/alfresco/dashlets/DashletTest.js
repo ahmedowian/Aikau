@@ -103,7 +103,9 @@ registerSuite(function(){
          },
 
          // This does not work in Chrome currently, however we expect the FF test to pass, so this provides some level of regression testability
-         "Resizing dashlet stores height (NOT EXPECTED TO WORK IN CHROME)": function() {
+         "Resizing dashlet stores height": function() {
+            TestCommon.skipIf(this, "environment", "chrome");
+
             return browser.findByCssSelector("#VALID_ID_DASHLET .alfresco-dashlets-Dashlet__resize-bar__icon")
                .moveMouseTo(0, 0)
                .pressMouseButton()

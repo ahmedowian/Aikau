@@ -46,7 +46,8 @@ define(["intern/dojo/node!fs",
        */
       testWebScriptURL: function (webScriptURL, webScriptPrefix) {
          if (!Config.urls.unitTestAppBaseUrl) {
-            var testServer = "http://" + this._getLocalIP() + ":8089";
+            var serverAddress = (intern.args.useLocalhost === "true") ? "localhost" : this._getLocalIP(),
+               testServer = "http://" + serverAddress + ":8089";
             Config.urls.unitTestAppBaseUrl = testServer;
             // console.log("Using test-server URL: " + testServer);
          }
@@ -392,6 +393,36 @@ define(["intern/dojo/node!fs",
          };
 
          return command;
+      },
+
+      /**
+       * Skip the supplied test if all the search strings are found in the environment
+       *
+       * @instance
+       * @param {Object} testObj The test object (normally passed as "this")
+       * @param {string} conditionType The condition type (only supported one atm is "environment")
+       * @param {string|string[]} searchString The search strings, normalised to an array
+       *                                       if just a single-string, which all must
+       *                                       match for the test to skip
+       */
+      skipIf: function(testObj, conditionType, searchString) {
+         if (conditionType !== "environment") {
+            throw new Error("Unknown condition type in skipIf(): \"" + conditionType + "\"");
+         }
+         var parentTest = testObj,
+            searchRegex = new RegExp(searchString, "i"),
+            maxLoops = 5,
+            loopIndex = 0,
+            envName;
+         do {
+            envName = parentTest.name;
+            if (loopIndex++ >= maxLoops) {
+               throw new Error("Error finding root suite (too many loops)");
+            }
+         } while ((parentTest = parentTest.parent));
+         if (searchRegex.test(envName)) {
+            testObj.skip("Test skipped because test environment is \"" + envName + "\"");
+         }
       },
 
       /**
