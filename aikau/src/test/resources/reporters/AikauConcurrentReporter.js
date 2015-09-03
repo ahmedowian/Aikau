@@ -69,7 +69,6 @@ define([
     * @type {Object}
     */
    var CHARM = {
-      BottomMargin: 1,
       Col: {
          Default: 3,
          MessageString: 3,
@@ -77,8 +76,8 @@ define([
          ProgressBar: 3,
          ProgressName: 3,
          ProgressValue: 21,
-         StatusName: 60,
-         StatusValue: 74
+         StatusName: 50,
+         StatusValue: 64
       },
       Row: {
          Title: 3,
@@ -92,10 +91,11 @@ define([
          Warnings: 13,
          Deprecations: 14,
          ProgressTitle: 6,
-         PercentComplete: 12,
+         PercentComplete: 11,
+         TunnelStatus: 12,
          TimeTaken: 13,
          TimeRemaining: 14,
-         ProgressBar: 9,
+         ProgressBar: 8,
          MessagesLine: 16
       },
       ProblemIndent: 2,
@@ -104,9 +104,10 @@ define([
       ProgressBar: {
          CompleteChar: "=",
          EmptyChar: ".",
-         Length: 50,
+         Length: 40,
          LineChar: "-"
       },
+      ScreenMargin: 2,
       SpinnerChars: "-\\|/-\\|/".split(""),
       TitleIndent: 1
    };
@@ -136,6 +137,17 @@ define([
    };
 
    /**
+    * Result types
+    * 
+    * @readonly
+    * @enum {string}
+    */
+   var RESULT_TYPE = {
+      Failed: "failed",
+      Skipped: "skipped"
+   };
+
+   /**
     * The charm instance
     *
     * @type {Object}
@@ -156,6 +168,16 @@ define([
        * @property {string} group.problem.message The problem's message
        * @property {int} group.problem.count The number of times this problem has occurred
        * @property {string} [group.problem.stack] The stacktrace if the problem is an error
+       */
+
+      /**
+       * A type that represents a result-collection, e.g. failures
+       *
+       * @typedef ResultCollection
+       * @property {Object} suite The suite under which to log the result (key is suite name)
+       * @property {Object} suite.test The test that the result came from (key is test name)
+       * @property {string} suite.test.message The failure/skip message, where the key is the
+       *                                       name of the environment the test ran in
        */
 
       /**
@@ -193,17 +215,6 @@ define([
       },
 
       /**
-       * The failures container object
-       *
-       * @instance
-       * @type {Object}
-       * @property {Object} suiteName The suite in which the failure occurred (key is suite name)
-       * @property {Object} suiteName.testName The test in which the failure occurred (key is test name)
-       * @property {string} suiteName.testName.message The failure message, where the key is the name of the environment in which it failed
-       */
-      failures: {},
-
-      /**
        * Problems (deprecations, errors or warnings) encountered during the test run
        *
        * @type {Object}
@@ -215,6 +226,19 @@ define([
          deprecations: {},
          errors: {},
          warnings: {}
+      },
+
+      /**
+       * The results container object
+       *
+       * @instance
+       * @type {Object}
+       * @property {ResultCollection} failed Failed tests
+       * @property {ResultCollection} skipped Skipped tests
+       */
+      results: {
+         failed: {},
+         skipped: {}
       },
 
       /**
@@ -232,13 +256,15 @@ define([
        * @property {Object} charm State values relating to charm
        * @property {int} charm.progressBarCurrPos Where the progress bar animation should be drawn (column index)
        * @property {int} charm.finalRow Where the cursor should finish after redraws (row index)
+       * @property {string} tunnel The current tunnel state
        */
       state: {
          charm: {
             finalRow: 0,
             nextSpinnerIndex: 0,
             progressBarCurrPos: CHARM.Col.ProgressBar
-         }
+         },
+         tunnel: "N/A"
       },
 
       /**
@@ -290,33 +316,6 @@ define([
       },
 
       /**
-       * Animate the progress bar
-       *
-       * @instance
-       */
-      animateProgressBar: function() {
-
-         // Wrap all in try/catch
-         try {
-
-            // Hide the cursor
-            charm.cursor(false);
-
-            // Update the animation
-            charm.position(this.state.charm.progressBarCurrPos, CHARM.Row.ProgressBar);
-            charm.display("bright");
-            charm.write(CHARM.SpinnerChars[this.state.charm.nextSpinnerIndex++ % CHARM.SpinnerChars.length]);
-            charm.display("reset");
-
-            // Put the cursor back
-            this.resetCursor();
-
-         } catch (e) {
-            this.exitWithError(e, "Error running animateProgressBar()");
-         }
-      },
-
-      /**
        * Augment the suite. Specifically, modify the setup() to: function read the
        * environment name and populate the environments collection, before continuing
        * with its normal behaviour.
@@ -329,17 +328,7 @@ define([
             environments = this.environments;
          if (setupFunc) {
             suite.setup = function() {
-               var rootSuite = this,
-                  envName;
-               do {
-                  envName = rootSuite.name;
-               }
-               while ((rootSuite = rootSuite.parent));
-               if (envName) {
-                  envName = envName[0].toUpperCase() + envName.substr(1);
-               }
-               // var myErrorMessage = Object.keys(this).join(", ") + "\n" + JSON.stringify(this, null, 2);
-               // helper.exitWithError(new Error(myErrorMessage), "Suite object for environment '" + envName + "'");
+               var envName = helper.getEnv(this);
                environments[envName] = true;
                return setupFunc.apply(this, arguments);
             };
@@ -367,105 +356,6 @@ define([
        */
       capitalise: function(input) {
          return input && input[0].toUpperCase() + input.substr(1).toLowerCase();
-      },
-
-      /**
-       * Clear the page and draw the basic page framework
-       *
-       * @instance
-       * @returns {[type]} [description]
-       */
-      drawPageFramework: function() {
-         /*jshint maxstatements:false*/
-
-         // Wrap all in try/catch
-         try {
-
-            // Delete everything on the page
-            charm.erase("screen");
-
-            // Setup function variables
-            var i;
-
-            // Output the title
-            var titleMessageParts = [CONFIG.Title, CONFIG.TitleHelp],
-               underOverLineLength = titleMessageParts.join(" ").length + (CHARM.TitleIndent * 2);
-            charm.position(CHARM.Col.Default, CHARM.Row.Title - 1);
-            charm.display("bright");
-            for (i = 0; i < underOverLineLength; i++) {
-               charm.write("=");
-            }
-            charm.position(CHARM.Col.Default + CHARM.TitleIndent, CHARM.Row.Title);
-            charm.write(CONFIG.Title);
-            if (CONFIG.TitleHelp) {
-               charm.display("reset");
-               charm.write(" " + CONFIG.TitleHelp);
-               charm.display("bright");
-            }
-            charm.position(CHARM.Col.Default, CHARM.Row.Title + 1);
-            for (i = 0; i < underOverLineLength; i++) {
-               charm.write("=");
-            }
-            charm.display("reset");
-
-            // Create the status section
-            charm.position(CHARM.Col.StatusName, CHARM.Row.StatusTitle);
-            charm.display("bright");
-            charm.write("STATUS");
-            charm.position(CHARM.Col.StatusName, CHARM.Row.Environments);
-            charm.display("reset");
-            charm.write("Environments: ");
-            charm.position(CHARM.Col.StatusName, CHARM.Row.Total);
-            charm.write("Total tests: ");
-            charm.position(CHARM.Col.StatusName, CHARM.Row.Passed);
-            charm.write("Passed: ");
-            charm.position(CHARM.Col.StatusName, CHARM.Row.Failed);
-            charm.write("Failed: ");
-            charm.position(CHARM.Col.StatusName, CHARM.Row.Skipped);
-            charm.write("Skipped: ");
-            charm.position(CHARM.Col.StatusName, CHARM.Row.Errors);
-            charm.write("Errors: ");
-            charm.position(CHARM.Col.StatusName, CHARM.Row.Warnings);
-            charm.write("Warnings: ");
-            charm.position(CHARM.Col.StatusName, CHARM.Row.Deprecations);
-            charm.write("Deprecations: ");
-
-            // Create the progress section
-            charm.position(CHARM.Col.ProgressName, CHARM.Row.ProgressTitle);
-            charm.display("bright");
-            charm.write("PROGRESS");
-            charm.display("reset");
-            charm.position(CHARM.Col.ProgressName, CHARM.Row.PercentComplete);
-            charm.write("Percent complete: ");
-            charm.position(CHARM.Col.ProgressName, CHARM.Row.TimeTaken);
-            charm.write("Time Taken: ");
-            charm.position(CHARM.Col.ProgressName, CHARM.Row.TimeRemaining);
-            charm.write("Time Remaining: ");
-
-            // Draw progress bar
-            charm.position(CHARM.Col.ProgressName, CHARM.Row.ProgressBar - 1);
-            for (i = 0; i < CHARM.ProgressBar.Length; i++) {
-               charm.display("bright");
-               charm.write(CHARM.ProgressBar.LineChar);
-               charm.display("reset");
-            }
-            charm.position(CHARM.Col.ProgressName, CHARM.Row.ProgressBar);
-            for (i = 0; i < CHARM.ProgressBar.Length; i++) {
-               charm.write(CHARM.ProgressBar.EmptyChar);
-            }
-            charm.position(CHARM.Col.ProgressName, CHARM.Row.ProgressBar + 1);
-            for (i = 0; i < CHARM.ProgressBar.Length; i++) {
-               charm.display("bright");
-               charm.write(CHARM.ProgressBar.LineChar);
-               charm.display("reset");
-            }
-
-            // Update the status text
-            this.updateStatus();
-
-         } catch (e) {
-            this.exitWithError(e, "Error drawPageFramework()");
-         }
       },
 
       /**
@@ -511,6 +401,23 @@ define([
       },
 
       /**
+       * Go up through the parent tests to find the current environment
+       *
+       * @instance
+       * @param {Object} testOrSuite The test or suite (technically still a test)
+       * @returns {string} The environment name
+       */
+      getEnv: function(testOrSuite) {
+         var parentTest = testOrSuite,
+            envName;
+         do {
+            envName = parentTest.name;
+         }
+         while ((parentTest = parentTest.parent));
+         return envName;
+      },
+
+      /**
        * Create shortcut hitch function
        *
        * @instance
@@ -545,7 +452,7 @@ define([
          try {
 
             // Calculate message space
-            this.totalMessageRows = this.terminalInfo.rows - CHARM.Row.MessagesLine - CHARM.BottomMargin;
+            this.totalMessageRows = this.terminalInfo.rows - CHARM.Row.MessagesLine - CHARM.ScreenMargin;
 
             // Setup charm
             charm = new Charm();
@@ -559,14 +466,14 @@ define([
             };
 
             // Do initial page draw
-            this.drawPageFramework();
+            this.renderPageFramework();
 
             // Setup redraw intervals
             this.intervals = [
-               setInterval(this.hitch(this, this.drawPageFramework), 5000),
-               setInterval(this.hitch(this, this.updateProgressText), 1000),
-               setInterval(this.hitch(this, this.updateStatus), 500),
-               setInterval(this.hitch(this, this.animateProgressBar), 100)
+               setInterval(this.hitch(this, this.renderPageFramework), 5000),
+               setInterval(this.hitch(this, this.renderProgressText), 1000),
+               setInterval(this.hitch(this, this.renderStatus), 500),
+               setInterval(this.hitch(this, this.renderProgressBar), 100)
             ];
 
          } catch (e) {
@@ -575,12 +482,13 @@ define([
       },
 
       /**
-       * Log a test failure
+       * Log a test result
        *
        * @instance
+       * @param {string} resultType The result type (from RESULT_TYPE enum)
        * @param {Object} test The failed test
        */
-      logFailure: function(test) {
+      logResult: function(resultType, test) {
 
          // Wrap all in try/catch
          try {
@@ -588,34 +496,26 @@ define([
             // Setup variables
             var testName = test.name,
                suiteName = test.parent.name,
-               errorMessage = test.error.message || "N/A";
-
-            // Calculate the environment name
-            var parentTest = test,
-               envName;
-            do {
-               envName = this.capitalise(parentTest.name);
-            }
-            while ((parentTest = parentTest.parent));
+               isFailure = resultType === RESULT_TYPE.Failed,
+               message = (isFailure ? test.error.message : test.skipped) || "N/A",
+               envName = this.getEnv(test);
 
             // Sanitise the error message
-            var lineBreakIndex = errorMessage.indexOf("\n");
-            if (lineBreakIndex !== -1) {
-               errorMessage = errorMessage.substr(0, lineBreakIndex);
-            }
+            message = message.replace(/^([^\n]+)\n?.*$/, "$1");
 
-            // Add to the failures object
-            var suiteFailures = this.failures[suiteName] || {},
-               testFailures = suiteFailures[testName] || {};
-            testFailures[envName] = errorMessage;
-            suiteFailures[testName] = testFailures;
-            this.failures[suiteName] = suiteFailures;
+            // Add to the results object
+            var resultCollection = this.results[resultType],
+               suiteResults = resultCollection[suiteName] || {},
+               testResults = suiteResults[testName] || {};
+            testResults[envName] = message;
+            suiteResults[testName] = testResults;
+            resultCollection[suiteName] = suiteResults;
 
             // Increment the counter
-            this.incrementCounter("failed");
+            this.incrementCounter(resultType);
 
          } catch (e) {
-            this.exitWithError(e, "Error handling failed test");
+            this.exitWithError(e, "Error handling test result");
          }
       },
 
@@ -626,12 +526,14 @@ define([
        * @param {PROBLEM_TYPE} type The type of problem (use the enum)
        * @param {string} groupName The name of the problem group (e.g. "Reporter")
        * @param {Error|string} errorOrMessage An Error object or an error message
+       * @param {boolean} [deferProblem=false] If this is true, then do not immediately
+       *                                       break if charm is not initialised
        */
-      logProblem: function(type, groupName, errorOrMessage) {
+      logProblem: function(type, groupName, errorOrMessage, deferProblem) {
 
          // Do we need to break out immediately?
          var isErrorObj = errorOrMessage instanceof Error;
-         if (!charm || (isErrorObj && CONFIG.BreakOnError)) {
+         if ((!charm && !deferProblem) || (isErrorObj && CONFIG.BreakOnError)) {
 
             // Break immediately and display error in console
             this.exitWithError(errorOrMessage, groupName + " error!");
@@ -732,56 +634,67 @@ define([
        */
       outputFinalResults: function() {
 
+         // Function variables
+         var loggedSectionTitle = false;
+
          // Next, stop using charm ... it's all console logging from now on
          charm.destroy();
 
-         // Log the failures
-         var loggedSectionTitle = false;
-         Object.keys(this.environments).forEach(function(envName) {
+         // Output the "results" (i.e. failures and skipped tests)
+         Object.keys(this.results).forEach(function(resultType) {
 
-            // Build up suite/test/error object
-            var failingSuites = {};
-            Object.keys(this.failures).forEach(function(suiteName) {
-               var testFailures = this.failures[suiteName];
-               Object.keys(testFailures).forEach(function(testName) {
-                  var failingEnvs = testFailures[testName],
-                     errorMessage = failingEnvs[envName];
-                  if (errorMessage) {
-                     var failingTests = failingSuites[suiteName] || {};
-                     failingTests[testName] = errorMessage;
-                     failingSuites[suiteName] = failingTests;
+            // Log results by environment
+            Object.keys(this.environments).forEach(function(envName) {
+
+               // Group results by suite
+               var thisEnvResultsBySuite = {},
+                  allResultsByType = this.results[resultType];
+               Object.keys(allResultsByType).forEach(function(suiteName) {
+                  var nextSuiteTestResults = allResultsByType[suiteName];
+                  Object.keys(nextSuiteTestResults).forEach(function(testName) {
+                     var environments = nextSuiteTestResults[testName],
+                        resultMessage = environments[envName];
+                     if (resultMessage) {
+                        var thisEnvTestResults = thisEnvResultsBySuite[suiteName] || {};
+                        thisEnvTestResults[testName] = resultMessage;
+                        thisEnvResultsBySuite[suiteName] = thisEnvTestResults;
+                     }
+                  });
+               }, this);
+
+               // Check if there are results to display
+               if (Object.keys(thisEnvResultsBySuite).length) {
+
+                  // Output the section title (need to break to avoid "fail" creating grunt output weirdness—double chevrons)
+                  var sectionTitleText = resultType.toUpperCase().replace(/^(\w{2})(.+)$/, "$1" + ANSI_CODES.Bright + "$2");
+                  if (!loggedSectionTitle) {
+                     console.log("");
+                     console.log(ANSI_CODES.Bright + "====================" + ANSI_CODES.Reset);
+                     console.log(ANSI_CODES.Bright + "===== " + sectionTitleText + " =====" + ANSI_CODES.Reset);
+                     console.log(ANSI_CODES.Bright + "====================" + ANSI_CODES.Reset);
+                     loggedSectionTitle = true;
                   }
-               });
+
+                  // Log the environment name
+                  console.log("");
+                  console.log(ANSI_CODES.Bright + "--- " + envName + " ---" + ANSI_CODES.Reset);
+
+                  // Output the suites/tests/results
+                  Object.keys(thisEnvResultsBySuite).forEach(function(suiteName) {
+                     console.log("");
+                     console.log(ANSI_CODES.Bright + ANSI_CODES.FgRed + suiteName + ANSI_CODES.Reset);
+                     var nextSuiteTestResults = thisEnvResultsBySuite[suiteName];
+                     Object.keys(nextSuiteTestResults).forEach(function(testName) {
+                        var resultMessage = nextSuiteTestResults[testName];
+                        console.log(ANSI_CODES.Bright + "\"" + testName + "\"" + ANSI_CODES.Reset);
+                        console.log(resultMessage);
+                     });
+                  });
+               }
             }, this);
 
-            // Check if there are failures to display
-            var failingSuiteNames = Object.keys(failingSuites);
-            if (failingSuiteNames.length) {
-
-               // Output the section title (break "fail" to avoid grunt output weirdness)
-               if (!loggedSectionTitle) {
-                  console.log(ANSI_CODES.Bright + "====================" + ANSI_CODES.Reset);
-                  console.log(ANSI_CODES.Bright + "===== FA" + ANSI_CODES.Bright + "ILURES =====" + ANSI_CODES.Reset);
-                  console.log(ANSI_CODES.Bright + "====================" + ANSI_CODES.Reset);
-                  loggedSectionTitle = true;
-               }
-
-               // Log the environment name
-               console.log("");
-               console.log(ANSI_CODES.Bright + "--- " + envName.toUpperCase() + " ---" + ANSI_CODES.Reset);
-
-               // Output the suites/tests/errors
-               Object.keys(failingSuites).forEach(function(suiteName) {
-                  console.log("");
-                  console.log(ANSI_CODES.Bright + ANSI_CODES.FgRed + suiteName + ANSI_CODES.Reset);
-                  var failingTests = failingSuites[suiteName];
-                  Object.keys(failingTests).forEach(function(testName) {
-                     var errorMessage = failingTests[testName];
-                     console.log(ANSI_CODES.Bright + "\"" + testName + "\"" + ANSI_CODES.Reset);
-                     console.log(errorMessage);
-                  });
-               });
-            }
+            // Reset title flag
+            loggedSectionTitle = false;
 
          }, this);
 
@@ -826,6 +739,7 @@ define([
 
             // Reset title flag
             loggedSectionTitle = false;
+
          }, this);
 
          // Couple of lines space
@@ -855,13 +769,131 @@ define([
       },
 
       /**
-       * Reset the cursor
+       * Clear the page and draw the basic page framework
+       *
+       * @instance
+       * @returns {[type]} [description]
+       */
+      renderPageFramework: function() {
+         /*jshint maxstatements:false*/
+
+         // Wrap all in try/catch
+         try {
+
+            // Delete everything on the page
+            charm.erase("screen");
+
+            // Setup function variables
+            var i;
+
+            // Output the title
+            var titleMessageParts = [CONFIG.Title, CONFIG.TitleHelp],
+               underOverLineLength = titleMessageParts.join(" ").length + (CHARM.TitleIndent * 2);
+            charm.position(CHARM.Col.Default, CHARM.Row.Title - 1);
+            charm.display("bright");
+            for (i = 0; i < underOverLineLength; i++) {
+               charm.write("=");
+            }
+            charm.position(CHARM.Col.Default + CHARM.TitleIndent, CHARM.Row.Title);
+            charm.write(CONFIG.Title);
+            if (CONFIG.TitleHelp) {
+               charm.display("reset");
+               charm.write(" " + CONFIG.TitleHelp);
+               charm.display("bright");
+            }
+            charm.position(CHARM.Col.Default, CHARM.Row.Title + 1);
+            for (i = 0; i < underOverLineLength; i++) {
+               charm.write("=");
+            }
+            charm.display("reset");
+
+            // Create the status section
+            charm.position(CHARM.Col.StatusName, CHARM.Row.StatusTitle);
+            charm.display("bright");
+            charm.write("STATUS");
+            charm.position(CHARM.Col.StatusName, CHARM.Row.Environments);
+            charm.display("reset");
+            charm.write("Environments: ");
+            charm.position(CHARM.Col.StatusName, CHARM.Row.Total);
+            charm.write("Total tests: ");
+            charm.position(CHARM.Col.StatusName, CHARM.Row.Passed);
+            charm.write("Passed: ");
+            charm.position(CHARM.Col.StatusName, CHARM.Row.Failed);
+            charm.write("Failed: ");
+            charm.position(CHARM.Col.StatusName, CHARM.Row.Skipped);
+            charm.write("Skipped: ");
+            charm.position(CHARM.Col.StatusName, CHARM.Row.Errors);
+            charm.write("Errors: ");
+            charm.position(CHARM.Col.StatusName, CHARM.Row.Warnings);
+            charm.write("Warnings: ");
+            charm.position(CHARM.Col.StatusName, CHARM.Row.Deprecations);
+            charm.write("Deprecations: ");
+
+            // Create the progress section
+            charm.position(CHARM.Col.ProgressName, CHARM.Row.ProgressTitle);
+            charm.display("bright");
+            charm.write("PROGRESS");
+            charm.display("reset");
+            charm.position(CHARM.Col.ProgressName, CHARM.Row.TunnelStatus);
+            charm.write("Tunnel status: ");
+            charm.position(CHARM.Col.ProgressName, CHARM.Row.PercentComplete);
+            charm.write("Percent complete: ");
+            charm.position(CHARM.Col.ProgressName, CHARM.Row.TimeTaken);
+            charm.write("Time Taken: ");
+            charm.position(CHARM.Col.ProgressName, CHARM.Row.TimeRemaining);
+            charm.write("Time Remaining: ");
+
+            // Draw progress bar
+            charm.position(CHARM.Col.ProgressName, CHARM.Row.ProgressBar - 1);
+            for (i = 0; i < CHARM.ProgressBar.Length; i++) {
+               charm.display("bright");
+               charm.write(CHARM.ProgressBar.LineChar);
+               charm.display("reset");
+            }
+            charm.position(CHARM.Col.ProgressName, CHARM.Row.ProgressBar);
+            for (i = 0; i < CHARM.ProgressBar.Length; i++) {
+               charm.write(CHARM.ProgressBar.EmptyChar);
+            }
+            charm.position(CHARM.Col.ProgressName, CHARM.Row.ProgressBar + 1);
+            for (i = 0; i < CHARM.ProgressBar.Length; i++) {
+               charm.display("bright");
+               charm.write(CHARM.ProgressBar.LineChar);
+               charm.display("reset");
+            }
+
+            // Update the status text
+            this.renderStatus();
+
+         } catch (e) {
+            this.exitWithError(e, "Error renderPageFramework()");
+         }
+      },
+
+      /**
+       * Animate the progress bar
        *
        * @instance
        */
-      resetCursor: function() {
-         charm.position(0, this.state.charm.finalRow);
-         charm.cursor(true);
+      renderProgressBar: function() {
+
+         // Wrap all in try/catch
+         try {
+
+            // Hide the cursor
+            charm.cursor(false);
+
+            // Update the animation
+            charm.position(this.state.charm.progressBarCurrPos, CHARM.Row.ProgressBar);
+            charm.display("bright");
+            charm.write(CHARM.SpinnerChars[this.state.charm.nextSpinnerIndex++ % CHARM.SpinnerChars.length]);
+            charm.display("reset");
+
+            // Put the cursor back
+            this.resetCursor();
+
+         } catch (e) {
+            this.exitWithError(e, "Error running renderProgressBar()");
+         }
       },
 
       /**
@@ -869,7 +901,7 @@ define([
        *
        * @instance
        */
-      updateProgressText: function() {
+      renderProgressText: function() {
 
          // Wrap all in try/catch
          try {
@@ -887,6 +919,8 @@ define([
                timeLeftMessage = this.pad(timeLeftMins, CHARM.Col.StatusName - CHARM.Col.ProgressValue, " ", true);
             charm.position(CHARM.Col.ProgressValue, CHARM.Row.PercentComplete);
             charm.write(percentComplete);
+            charm.position(CHARM.Col.ProgressValue, CHARM.Row.TunnelStatus);
+            charm.write(this.state.tunnel);
             charm.position(CHARM.Col.ProgressValue, CHARM.Row.TimeTaken);
             charm.write(timeTakenMessage);
             charm.position(CHARM.Col.ProgressValue, CHARM.Row.TimeRemaining);
@@ -908,7 +942,7 @@ define([
             this.resetCursor();
 
          } catch (e) {
-            this.exitWithError(e, "Error running updateProgressText()");
+            this.exitWithError(e, "Error running renderProgressText()");
          }
       },
 
@@ -917,7 +951,7 @@ define([
        *
        * @instance
        */
-      updateStatus: function() {
+      renderStatus: function() {
          /*jshint maxstatements:false,maxcomplexity:false*/
 
          // Catch all errors
@@ -930,9 +964,19 @@ define([
             // Hide cursor
             charm.cursor(false);
 
+            // Create environments string
+            var environmentsMessage = "Updating...",
+               spaceToDisplayEnvironments = this.terminalInfo.cols - CHARM.Col.StatusValue - CHARM.ScreenMargin;
+            if(environmentNames.length) {
+               environmentsMessage = environmentNames.length + " (" + environmentNames.join(", ") + ")";
+               if(environmentsMessage.length > spaceToDisplayEnvironments - 4) {
+                  environmentsMessage = environmentsMessage.substr(0, spaceToDisplayEnvironments - 4) + "...)"
+               }
+            }
+
             // Position, write, repeat (status info)
             charm.position(CHARM.Col.StatusValue, CHARM.Row.Environments);
-            charm.write(environmentNames.length ? environmentNames.join(", ") : "Updating...");
+            charm.write(environmentsMessage);
             charm.position(CHARM.Col.StatusValue, CHARM.Row.Total);
             charm.write(this.testCounts.total);
             charm.position(CHARM.Col.StatusValue, CHARM.Row.Passed);
@@ -952,26 +996,26 @@ define([
             var messages = {
                deprecations: [],
                errors: [],
-               failures: [],
+               failed: [],
                warnings: []
             };
 
             // Generate failure messages
-            var failures = this.failures;
-            if (!Object.keys(failures).length) {
-               failures = {
+            var failedTests = this.results.failed;
+            if (!Object.keys(failedTests).length) {
+               failedTests = {
                   "N/A": {}
                };
             }
-            Object.keys(failures).forEach(function(suiteName) {
-               messages.failures.push(suiteName);
-               var failingTests = failures[suiteName];
+            Object.keys(failedTests).forEach(function(suiteName) {
+               messages.failed.push(suiteName);
+               var failingTests = failedTests[suiteName];
                Object.keys(failingTests).forEach(function(testName) {
                   var testFailingEnvironments = failingTests[testName],
                      environments = Object.keys(testFailingEnvironments).join(", "),
                      failureMessage = CHARM.ProblemPrefix + testName;
                   failureMessage += ANSI_CODES.Bright + " [" + environments + "]" + ANSI_CODES.Reset;
-                  messages.failures.push(failureMessage);
+                  messages.failed.push(failureMessage);
                });
             });
 
@@ -1003,7 +1047,7 @@ define([
 
             // Calculate how many rows of messages to show
             var availableRowsForMessages = this.totalMessageRows - 7, // Four titles, three blank rows between
-               failureLines = messages.failures.length,
+               failureLines = messages.failed.length,
                errorLines = messages.errors.length,
                warningLines = messages.warnings.length,
                deprecationLines = messages.deprecations.length;
@@ -1026,14 +1070,14 @@ define([
                }
 
                // Update the collections
-               messages.failures = messages.failures.reverse().slice(0, newFailureLines).reverse();
+               messages.failed = messages.failed.reverse().slice(0, newFailureLines).reverse();
                messages.errors = messages.errors.reverse().slice(0, newErrorLines).reverse();
                messages.warnings = messages.warnings.reverse().slice(0, newWarningLines).reverse();
                messages.deprecations = messages.deprecations.reverse().slice(0, newDeprecationLines).reverse();
 
                // Indicate on first line if previous lines hidden
                if (newFailureLines < failureLines) {
-                  messages.failures[0] = ANSI_CODES.Dim + CHARM.ProblemsCroppedMessage + ANSI_CODES.Reset;
+                  messages.failed[0] = ANSI_CODES.Dim + CHARM.ProblemsCroppedMessage + ANSI_CODES.Reset;
                }
                if (newErrorLines < errorLines) {
                   messages.errors[0] = ANSI_CODES.Dim + CHARM.ProblemsCroppedMessage + ANSI_CODES.Reset;
@@ -1051,7 +1095,7 @@ define([
             charm.erase("down");
 
             // Output the messages (array literal determines output order)
-            var messageGroups = ["failures", "errors", "warnings", "deprecations"];
+            var messageGroups = ["failed", "errors", "warnings", "deprecations"];
             messageGroups.forEach(function(groupName) {
 
                // Display the title (broken to avoid weird grunt formatting)
@@ -1084,8 +1128,18 @@ define([
             this.resetCursor();
 
          } catch (e) {
-            this.exitWithError(e, "Error running updateStatus()");
+            this.exitWithError(e, "Error running renderStatus()");
          }
+      },
+
+      /**
+       * Reset the cursor
+       *
+       * @instance
+       */
+      resetCursor: function() {
+         charm.position(0, this.state.charm.finalRow);
+         charm.cursor(true);
       }
    };
 
@@ -1217,6 +1271,9 @@ define([
        * @param {Object} executor The test executor
        */
       runStart: function( /*jshint unused:false*/ executor) {
+         if (helper.state.tunnel !== "N/A") {
+            helper.state.tunnel = "Active";
+         }
          var terminalInfo = executor.config.terminalInfo;
          helper.terminalInfo = {
             cols: terminalInfo.cols || 150,
@@ -1247,7 +1304,8 @@ define([
        */
       suiteError: function(suite, error) {
          if (suite.name) {
-            helper.logProblem(PROBLEM_TYPE.Error, suite.name, error);
+            var envName = helper.getEnv(suite);
+            helper.logProblem(PROBLEM_TYPE.Error, suite.name + " (" + envName + ")", error);
          }
       },
 
@@ -1278,7 +1336,7 @@ define([
        * @param {Object} test The test
        */
       testFail: function(test) {
-         helper.logFailure(test);
+         helper.logResult(RESULT_TYPE.Failed, test);
       },
 
       /**
@@ -1298,7 +1356,7 @@ define([
        * @param {Object} test The test
        */
       testSkip: function( /*jshint unused:false*/ test) {
-         helper.incrementCounter("skipped");
+         helper.logResult(RESULT_TYPE.Skipped, test);
       },
 
       /**
@@ -1320,8 +1378,11 @@ define([
        * @param {number} progress.loaded Number of bytes received
        * @param {number} progress.total Number of bytes to download
        */
-      tunnelDownloadProgress: function( /*jshint unused:false*/ tunnel, /*jshint unused:false*/ progress) {
-         // Not currently used
+      tunnelDownloadProgress: function( /*jshint unused:false*/ tunnel, progress) {
+         if (progress.type === "data") {
+            var percentComplete = (progress.loaded / progress.total * 100).toFixed(1);
+            helper.state.tunnel = "Downloading (" + percentComplete + "%)";
+         }
       },
 
       /**
@@ -1331,7 +1392,7 @@ define([
        * @param {Object} tunnel The tunnel
        */
       tunnelEnd: function( /*jshint unused:false*/ tunnel) {
-         // Not currently used
+         helper.state.tunnel = "Closing";
       },
 
       /**
@@ -1341,7 +1402,7 @@ define([
        * @param {Object} tunnel The tunnel
        */
       tunnelStart: function( /*jshint unused:false*/ tunnel) {
-         // Not currently used
+         helper.state.tunnel = "Starting";
       },
 
       /**
@@ -1352,7 +1413,7 @@ define([
        * @param {string} status The status update
        */
       tunnelStatus: function( /*jshint unused:false*/ tunnel, /*jshint unused:false*/ status) {
-         // Not currently used
+         helper.state.tunnel = status;
       }
    };
 
