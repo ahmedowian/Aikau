@@ -41,7 +41,16 @@ define(["dojo/_base/declare",
 
    return declare([_WidgetBase, _TemplatedMixin, ObjectProcessingMixin, CoreWidgetProcessing, Core], {
 
-       /**
+      /**
+       * An array of the i18n files to use with this widget.
+       *
+       * @instance
+       * @type {object[]}
+       * @default [{i18nFile: "./i18n/UploadHistory.properties"}]
+       */
+      i18nRequirements: [{i18nFile: "./i18n/UploadHistory.properties"}],
+
+      /**
        * An array of the CSS files to use with this widget.
        * 
        * @instance
@@ -157,6 +166,7 @@ define(["dojo/_base/declare",
                                        name: "alfresco/renderers/Property",
                                        config: {
                                           propertyToRender: "location.site.title",
+                                          label: "upload.history.site.prefix",
                                           renderOnNewLine: true,
                                           renderFilter: [
                                              {
@@ -166,6 +176,14 @@ define(["dojo/_base/declare",
                                                 negate: true
                                              }
                                           ]
+                                       }
+                                    },
+                                    {
+                                       name: "alfresco/renderers/Property",
+                                       config: {
+                                          propertyToRender: "location.path",
+                                          renderOnNewLine: true,
+                                          label: "upload.history.path.prefix"
                                        }
                                     }
                                  ]
