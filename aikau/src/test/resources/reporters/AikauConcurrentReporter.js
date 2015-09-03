@@ -991,13 +991,13 @@ define([
                passed = this.testCounts.passed,
                failed = this.testCounts.failed,
                skipped = this.testCounts.skipped;
-            if (passed && passed !== total) {
+            if (passed && passed !== total && (failed || skipped)) {
                passed += " (" + (passed / total * 100).toFixed(1) + "%)"
             }
-            if (failed && failed !== total) {
+            if (failed && failed !== total && (passed || skipped)) {
                failed += " (" + (failed / total * 100).toFixed(1) + "%)"
             }
-            if (skipped && skipped !== total) {
+            if (skipped && skipped !== total && (passed || failed)) {
                skipped += " (" + (skipped / total * 100).toFixed(1) + "%)"
             }
 
