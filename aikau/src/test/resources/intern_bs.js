@@ -24,7 +24,8 @@ define(["./config/Suites"],
          MAC = "OS X",
          MAC_VERSION = "Yosemite",
          WINDOWS = "Windows",
-         WINDOWS_VERSION = "7";
+         WINDOWS_VERSION = "7",
+         BS_DEBUG = false;
 
       return {
 
@@ -57,7 +58,8 @@ define(["./config/Suites"],
             platform: MAC,
             platformVersion: MAC_VERSION,
             project: PROJECT_NAME,
-            name: SESSION_NAME
+            name: SESSION_NAME,
+            "browserstack.debug": BS_DEBUG
          }, {
             browserName: "Firefox",
             os: MAC,
@@ -65,7 +67,8 @@ define(["./config/Suites"],
             platform: MAC,
             platformVersion: MAC_VERSION,
             project: PROJECT_NAME,
-            name: SESSION_NAME
+            name: SESSION_NAME,
+            "browserstack.debug": BS_DEBUG
          }, {
             browserName: "Internet Explorer",
             version: ["11", "10", "9"],
@@ -74,7 +77,8 @@ define(["./config/Suites"],
             platform: WINDOWS,
             platformVersion: WINDOWS_VERSION,
             project: PROJECT_NAME,
-            name: SESSION_NAME
+            name: SESSION_NAME,
+            "browserstack.debug": BS_DEBUG
          }],
 
          // Maximum number of simultaneous integration tests that should be executed on the remote WebDriver service
