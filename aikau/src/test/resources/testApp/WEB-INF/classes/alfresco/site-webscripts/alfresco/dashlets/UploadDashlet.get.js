@@ -35,12 +35,11 @@ model.jsonModel = {
                   config: {
                      widgets: [
                         {
-                           name: "alfresco/upload/UploadTarget",
-                           config: {
-                              
-                           }
+                           id: "TARGET",
+                           name: "alfresco/upload/UploadTarget"
                         },
                         {
+                           id: "HISTORY",
                            name: "alfresco/upload/UploadHistory",
                            config: {
                               visibilityConfig: {
@@ -59,6 +58,32 @@ model.jsonModel = {
                   }
                }
             ]
+         }
+      },
+      {
+         id: "SIM_BUTTON",
+         name: "alfresco/buttons/AlfButton",
+         config: {
+            label: "Simulate dialog confirmation",
+            publishTopic: "ALF_CONTENT_SERVICE_UPLOAD_REQUEST_RECEIVED",
+            publishPayload: {
+               responseScope: "UPLOAD_",
+               targetData: {
+                  siteId: null,
+                  containerId: null,
+                  uploadDirectory: null,
+                  description: "",
+                  overwrite: false,
+                  thumbnails: "doclib",
+                  username: null,
+                  destination: [
+                     "alfresco://user/home"
+                  ]
+               },
+               files: [
+                  {}
+               ]
+            }
          }
       },
       {

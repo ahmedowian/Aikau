@@ -7,6 +7,9 @@
    display: table;
    vertical-align: top;
 
+   /* Required for Firefox */
+   width: ~"calc(100% - 16px)";
+
    &.dndHighlight {
       border: 3px solid @standard-border-color;
    }
