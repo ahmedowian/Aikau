@@ -43,7 +43,16 @@ model.jsonModel = {
                         {
                            name: "alfresco/upload/UploadHistory",
                            config: {
-                              
+                              visibilityConfig: {
+                                 initialValue: false,
+                                 rules: [
+                                    {
+                                       topic: "ALF_DOCLIST_RELOAD_DATA",
+                                       attribute: "alfTopic",
+                                       isNot: [null]
+                                    }
+                                 ]
+                              }
                            }
                         }
                      ]
