@@ -529,8 +529,7 @@ define(["dojo/_base/declare",
        * @instance
        * @param {object} Contains info about the file and its request.
        */
-      startFileUpload: function alfresco_services_UploadService__startFileUpload(fileInfo)
-      {
+      startFileUpload: function alfresco_services_UploadService__startFileUpload(fileInfo) {
          // Mark file as being uploaded
          fileInfo.state = this.STATE_UPLOADING;
 
@@ -646,7 +645,6 @@ define(["dojo/_base/declare",
        * @param {object} fileInfo The data about the file being uploaded.
        */
       updateAggregateProgress: function alfresco_services_UploadService__updateAggregateProgress(fileInfo) {
-
          // Update the aggregate progress of all the files uploaded...
          if (this.uploadDisplayWidget !== null && 
              this.uploadDisplayWidget !== undefined && 

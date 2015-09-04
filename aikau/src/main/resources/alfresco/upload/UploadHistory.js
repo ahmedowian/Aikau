@@ -18,6 +18,11 @@
  */
 
 /**
+ * This widget can be used to display the last few folders that the current user uploaded to. The upload history
+ * is managed by the [UploadService]{@link module:alfresco/services/UploadService} and is persisted as a user
+ * preference. This user preference is requested when the widget loads and if provided will render each previous
+ * upload location using a configurable widget model.
+ * 
  * @module alfresco/upload/UploadHistory
  * @extends external:dijit/_WidgetBase
  * @mixes external:dojo/_TemplatedMixin
@@ -78,6 +83,9 @@ define(["dojo/_base/declare",
       preferenceName: "org.alfresco.share.upload.destination.history",
 
       /**
+       * Creates a single upload target for the supplied NodeRef using the configured
+       * [widgetsForUploadTargets]{@link module:alfresco/upload/UploadHistory#widgetsForUploadTargets}
+       * model.
        * 
        * @instance
        * @param {string} nodeRef The nodeRef to create the upload target for
@@ -97,6 +105,9 @@ define(["dojo/_base/declare",
       },
 
       /**
+       * Splits the supplied string into an array of NodeRefs (using comma as the delimiter) and then iterates 
+       * over that array calling [createUploadTarget]{@link module:alfresco/upload/UploadHistory#createUploadTarget}
+       * for each NodeRef.
        * 
        * @instance
        * @param {string} value The preference value containing the nodeRefs to create upload targets for
@@ -110,11 +121,25 @@ define(["dojo/_base/declare",
       },
 
       /**
-       * 
+       * Calls the [render]{@link module:alfresco/upload/UploadHistory#render} function to request and
+       * render the user upload history and then sets up a subscription for any further uploads that complete
+       * in order that the display can be refreshed.
        * 
        * @instance
        */
       postCreate: function alfresco_upload_UploadHistory__postCreate() {
+         this.render();
+         this.alfSubscribe(topics.RELOAD_DATA_TOPIC, lang.hitch(this, this.render));
+      },
+
+      /**
+       * Makes a request for the current users upload history from their preferences and then
+       * with a callback to the [createUploadTargets]{@link module:alfresco/upload/UploadHistory#createUploadTargets}
+       * function to render the upload history.
+       * 
+       * @instance
+       */
+      render: function alfresco_upload_UploadHistory__render() {
          this.alfPublish(topics.GET_PREFERENCE, {
             preference: this.preferenceName,
             callback: this.createUploadTargets,
@@ -123,6 +148,8 @@ define(["dojo/_base/declare",
       },
 
       /**
+       * This is the widget model used to render each upload target. The root widget should be an
+       * [UploadFolder]{@link moduke:alfresco/upload/UploadFolder} or a widget that extends it.
        * 
        * @instance
        * @type {Array}

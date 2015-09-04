@@ -82,10 +82,14 @@ define(["dojo/_base/declare",
       },
 
       /**
-       * [publishUpdateRequest description]
-       * @param  {[type]} uploadConfig [description]
-       * @param  {[type]} files        [description]
-       * @return {[type]}              [description]
+       * Overrides the [inherited function]{@link module:alfresco/documentlibrary/_AlfDndDocumentUploadMixin#publishUpdateRequest}
+       * to change that publication that is made when files are dragged and dropped onto the widget to render
+       * the [widgetsForLocationSelection]{@link module:alfresco/upload/UploadTarget#widgetsForLocationSelection} model in 
+       * a dialog.
+       *
+       * @instance
+       * @param {object} uploadConfig The upload configuration.
+       * @param {object[]} files The files that have been dragged and dropped onto the widget
        */
       publishUpdateRequest: function alfresco_documentlibrary__AlfDndDocumentUploadMixin__publishUpdateRequest(uploadConfig, files) {
          // Set up a response topic for receiving notifications that the upload has completed...
@@ -114,7 +118,7 @@ define(["dojo/_base/declare",
       },
 
       /**
-       * 
+       * Sets up the widgets DOM element with file drag-and-drop upload capabilities.
        * 
        * @instance
        */
@@ -132,7 +136,9 @@ define(["dojo/_base/declare",
       },
 
       /**
-       * 
+       * The widget model for providing the user with an interface to be displayed in a form dialog
+       * for selecting the location to upload files to when they are dragged and dropped onto the 
+       * widget.
        * 
        * @instance
        * @type {object[]}
@@ -153,7 +159,8 @@ define(["dojo/_base/declare",
       ],
 
       /**
-       * 
+       * A widget model for requesting both the files to upload as well as the location to upload
+       * them to. By default the widget model is just a basic [AlfButton]{@link module:alfresco/buttons/AlfButton}.
        * 
        * @instance
        * @type {object[]}

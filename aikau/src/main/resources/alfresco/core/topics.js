@@ -208,6 +208,17 @@ define([],function() {
       PATH_CHANGED: "ALF_DOCUMENTLIST_PATH_CHANGED",
 
       /**
+       * This topic is published to indicate that data needs to be uploaded. This is typically list based data but can
+       * be used by other widgets.
+       *
+       * @instance
+       * @type {string}
+       * @default
+       * @since 1.0.34
+       */
+      RELOAD_DATA_TOPIC: "ALF_DOCLIST_RELOAD_DATA",
+
+      /**
        * Called to start off the archiving process.
        *
        * @instance
@@ -277,7 +288,6 @@ define([],function() {
        * @default
        */
       UPDATE_PAGE_TITLE: "ALF_UPDATE_PAGE_TITLE",
-
 
       /**
        * This topic can be published to display a dialog that allows users to select one or more files

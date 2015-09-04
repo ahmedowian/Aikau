@@ -26,8 +26,9 @@
 define(["alfresco/core/Core",
         "alfresco/core/topics",
         "dojo/_base/declare",
-        "dojo/_base/lang"],
-   function(AlfCore, topics, declare, lang) {
+        "dojo/_base/lang",
+        "dojo/text!./responseTemplates/UploadHistory/Document.json"],
+   function(AlfCore, topics, declare, lang, doc) {
 
       return declare([AlfCore], {
 
@@ -39,7 +40,8 @@ define(["alfresco/core/Core",
          constructor: function alfresco_testing_mockservices_UploadHistoryMockService__constructor() {
             this.alfSubscribe(topics.GET_PREFERENCE, lang.hitch(this, this.getPreference));
             this.alfSubscribe(topics.SET_PREFERENCE, lang.hitch(this, this.setPreference));
-            this.uploadHistory = "some://fake/node";
+            this.alfSubscribe(topics.GET_DOCUMENT, lang.hitch(this, this.getDocument));
+            this.uploadHistory = "";
          },
 
          /**
@@ -64,6 +66,16 @@ define(["alfresco/core/Core",
             {
                this.uploadHistory = payload.value;
             }
+         },
+
+         /**
+          * 
+          * @instance
+          */
+         getDocument: function alfresco_testing_mockservices_UploadHistoryMockService__getDocument(/*jshint unused:false*/ payload) {
+            this.alfPublish(payload.alfResponseTopic + "_SUCCESS", {
+               response: JSON.parse(doc)
+            });
          }
       });
    });

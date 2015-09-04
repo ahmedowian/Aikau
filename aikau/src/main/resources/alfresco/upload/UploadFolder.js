@@ -18,6 +18,12 @@
  */
 
 /**
+ * Extends [AlfDocument]{@link module:alfresco/documentlibrary/AlfDocument} to provide a way of rendering
+ * a container node that is primarily used for the purposes of uploading. It provides drag-and-drop
+ * upload capabilities by mixing in the 
+ * [_AlfDndDocumentUploadMixin]{@link module:alfresco/documentlibrary/_AlfDndDocumentUploadMixin}
+ * so that files can easily be dropped anywhere on the widgets rendered to trigger an upload.
+ * 
  * @module alfresco/upload/UploadFolder
  * @extends alfresco/documentlibrary/AlfDocument
  * @author Dave Draper
@@ -42,6 +48,9 @@ define(["dojo/_base/declare",
       cssRequirements: [{cssFile:"./css/UploadFolder.css"}],
          
       /**
+       * Override the [inherited function]{@link module:alfresco/documentlibrary/_AlfDndDocumentUploadMixin#getUploadConfig}
+       * to set the upload destination as the NodeRef of the Node being displayed.
+       * 
        * @instance
        */
       getUploadConfig: function alfresco_upload_UploadFolder__getUploadConfig() {
@@ -51,7 +60,8 @@ define(["dojo/_base/declare",
       },
 
       /**
-       * 
+       * Extends the [inherited function]{@link module:alfresco/documentlibrary/AlfDocument#postCreate}
+       * to set up the widgets DOM element with drag-and-drop file upload capabilities.
        * 
        * @instance
        */
